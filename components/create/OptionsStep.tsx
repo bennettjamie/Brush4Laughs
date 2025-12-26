@@ -12,6 +12,13 @@ type OptionsStepProps = {
     setColors: (val: number) => void;
     setComplexity: (val: number) => void;
     setColorOpacity: (val: number) => void;
+    // New Detail Props
+    faceDetail: number;
+    bodyDetail: number;
+    bgDetail: number;
+    setFaceDetail: (val: number) => void;
+    setBodyDetail: (val: number) => void;
+    setBgDetail: (val: number) => void;
     onGenerate: () => void;
     onBack: () => void;
 };
@@ -25,6 +32,12 @@ export function OptionsStep({
     setColors,
     setComplexity,
     setColorOpacity,
+    faceDetail,
+    bodyDetail,
+    bgDetail,
+    setFaceDetail,
+    setBodyDetail,
+    setBgDetail,
     onGenerate,
     onBack,
 }: OptionsStepProps) {
@@ -90,6 +103,60 @@ export function OptionsStep({
                             className="w-full h-1.5 bg-slate-200 dark:bg-white/10 rounded-lg appearance-none cursor-pointer accent-indigo-500 hover:accent-indigo-400 transition-colors"
                         />
                         <p className="text-sm text-muted-foreground dark:text-slate-200 mt-6 font-black uppercase tracking-widest bg-slate-100 dark:bg-white/5 p-3 rounded-lg text-center border border-slate-200 dark:border-white/10">Faint color hint on physical canvas to guide your initial layers.</p>
+                    </div>
+
+                    {/* Advanced Controls */}
+                    <div className="glass rounded-3xl p-6 border-slate-200 dark:border-white/5 bg-indigo-50/50 dark:bg-indigo-900/10">
+                        <h3 className="font-black text-lg uppercase tracking-widest mb-6 text-indigo-500">Advanced Detail Control</h3>
+
+                        <div className="space-y-8">
+                            <div>
+                                <div className="flex justify-between mb-2">
+                                    <label className="text-sm font-bold uppercase tracking-wide">Face Detail</label>
+                                    <span className="text-sm font-bold text-indigo-500">{faceDetail}%</span>
+                                </div>
+                                <input
+                                    type="range"
+                                    min="0"
+                                    max="100"
+                                    value={faceDetail}
+                                    onChange={(e) => setFaceDetail(Number(e.target.value))}
+                                    className="w-full h-1 bg-slate-300 dark:bg-white/20 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                                />
+                                <p className="text-xs text-muted-foreground mt-2">Higher = Keeps eyes/features. Lower = Smoother skin.</p>
+                            </div>
+
+                            <div>
+                                <div className="flex justify-between mb-2">
+                                    <label className="text-sm font-bold uppercase tracking-wide">People / Body Detail</label>
+                                    <span className="text-sm font-bold text-indigo-500">{bodyDetail}%</span>
+                                </div>
+                                <input
+                                    type="range"
+                                    min="0"
+                                    max="100"
+                                    value={bodyDetail}
+                                    onChange={(e) => setBodyDetail(Number(e.target.value))}
+                                    className="w-full h-1 bg-slate-300 dark:bg-white/20 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                                />
+                                <p className="text-xs text-muted-foreground mt-2">detail of clothes, hands, hair.</p>
+                            </div>
+
+                            <div>
+                                <div className="flex justify-between mb-2">
+                                    <label className="text-sm font-bold uppercase tracking-wide">Background Detail</label>
+                                    <span className="text-sm font-bold text-indigo-500">{bgDetail}%</span>
+                                </div>
+                                <input
+                                    type="range"
+                                    min="0"
+                                    max="100"
+                                    value={bgDetail}
+                                    onChange={(e) => setBgDetail(Number(e.target.value))}
+                                    className="w-full h-1 bg-slate-300 dark:bg-white/20 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                                />
+                            </div>
+                        </div>
                     </div>
 
                     <div className="bg-slate-100 dark:bg-slate-900 border-2 border-indigo-500/20 dark:border-indigo-500/40 rounded-3xl p-10 relative overflow-hidden group/studio shadow-xl dark:shadow-[0_0_50px_-10px_rgba(79,70,229,0.3)]">

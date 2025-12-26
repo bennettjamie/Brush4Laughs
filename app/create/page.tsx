@@ -3,10 +3,11 @@
 import { useState, useCallback, useEffect } from "react";
 import { AnimatePresence } from "framer-motion";
 import { Point, Area } from "react-easy-crop";
+import { generateClientCanvasPDF } from "@/lib/pdf/client-generator";
 
 // Utilities & Constants
 import { getCroppedImg } from "@/lib/utils";
-import { generatePDF } from "@/lib/pdf/generator";
+
 import { PRINT_SIZES, LOADING_STEPS, PrintSize } from "@/lib/constants";
 
 // Components
@@ -33,9 +34,13 @@ export default function CreatePage() {
     const [croppedImage, setCroppedImage] = useState<string | null>(null);
 
     // Options state
-    const [colors, setColors] = useState(16);
+    const [colors, setColors] = useState(20);
     const [complexity, setComplexity] = useState(6);
     const [colorOpacity, setColorOpacity] = useState(15);
+    // Detail State
+    const [faceDetail, setFaceDetail] = useState(50);
+    const [bodyDetail, setBodyDetail] = useState(50);
+    const [bgDetail, setBgDetail] = useState(50);
 
     // Result state
     const [resultImage, setResultImage] = useState<string | null>(null);
@@ -47,7 +52,8 @@ export default function CreatePage() {
     const [loadingProgress, setLoadingProgress] = useState(0);
     const [loadingStep, setLoadingStep] = useState(0);
     const [unit, setUnit] = useState<"ml" | "oz">("ml");
-    const [opacity, setOpacity] = useState(35);
+    const [opacity, setOpacity] = useState(50);
+    const [sizeUnit, setSizeUnit] = useState<"in" | "cm">("in");
 
     // --- Side Effects ---
 
@@ -58,14 +64,15 @@ export default function CreatePage() {
             setLoadingStep(0);
             const interval = setInterval(() => {
                 setLoadingProgress(prev => {
-                    if (prev >= 95) {
-                        clearInterval(interval);
-                        return prev;
-                    }
-                    const inc = Math.random() * 5;
-                    return Math.min(prev + inc, 95);
+                    // "Zeno's Paradox" Simulation (Slower & Heavier):
+                    // Move 0.5% of the remaining distance to 98% every tick.
+                    // This makes the bar feel like it has "weight" and avoids the "almost done" fake-out.
+                    if (prev >= 98) return 98;
+                    const remaining = 98 - prev;
+                    const inc = Math.max(0.05, remaining * 0.005); // Much slower decay
+                    return prev + inc;
                 });
-            }, 400);
+            }, 600); // Slower tick rate (600ms)
             return () => clearInterval(interval);
         } else {
             setLoadingProgress(100);
@@ -201,23 +208,103 @@ export default function CreatePage() {
         }
     };
 
-    const handleDownload = () => {
+    const [downloadingType, setDownloadingType] = useState<"canvas" | "guide" | "canvas-reverse" | null>(null);
+
+    const handleDownload = async (type: "canvas" | "guide" | "canvas-reverse") => {
+        setDownloadingType(type);
         let finalPrintSize = printSize;
         if (printSize.name === "Custom") {
             finalPrintSize = { ...printSize, width: customDim.width, height: customDim.height };
         }
-        generatePDF(
-            outlineImage!,
-            resultImage!,
-            croppedImage,
-            palette,
-            labels,
-            dimensions!,
-            unit,
-            finalPrintSize,
-            customDim,
-            opacity
-        );
+        // Auto-detect orientation from the actual crop geometry
+        const cropW = croppedAreaPixels?.width || 0;
+        const cropH = croppedAreaPixels?.height || 0;
+        const effectiveLandscape = cropW > cropH;
+
+        let baseW = printSize.width;
+        let baseH = printSize.height;
+
+        if (printSize.name === "Custom") {
+            baseW = customDim.width;
+            baseH = customDim.height;
+        }
+
+        const maxDim = Math.max(baseW, baseH);
+        const minDim = Math.min(baseW, baseH);
+
+        const targetW = effectiveLandscape ? maxDim : minDim;
+        const targetH = effectiveLandscape ? minDim : maxDim;
+
+        // CLIENT-SIDE GENERATION FOR CANVAS & CANVAS-REVERSE
+        if ((type === "canvas" || type === "canvas-reverse") && outlineImage && resultImage && labels && dimensions) {
+            try {
+                const doc = await generateClientCanvasPDF(
+                    outlineImage,
+                    resultImage,
+                    opacity,
+                    labels, // Ensure pipeline.ts returns compatible labels
+                    dimensions,
+                    { width: targetW, height: targetH },
+                    { mirror: type === "canvas-reverse" }
+                );
+                const fname = type === "canvas-reverse" ? "Canvas-Reverse" : "Canvas";
+                doc.save(`Brush4Laughs-${fname}-${targetW}x${targetH}.pdf`);
+            } catch (e) {
+                console.error("Client-side PDF failed", e);
+                alert("Failed to generate PDF");
+            } finally {
+                setDownloadingType(null);
+            }
+            return;
+        }
+
+        // SERVER-SIDE GENERATION FOR GUIDE (Fallback)
+        try {
+            fetch("/api/pdf", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    outlineUrl: outlineImage,
+                    resultUrl: resultImage,
+                    originalUrl: croppedImage,
+                    palette,
+                    labels,
+                    dimensions,
+                    unit,
+                    printSize,
+                    customDim,
+                    pdfDimensions: { width: targetW, height: targetH }, // Explicit dimensions
+                    opacity,
+                    type // Pass the type
+                })
+            })
+                .then(res => {
+                    if (!res.ok) throw new Error("PDF generation failed");
+                    return res.blob();
+                })
+                .then(blob => {
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    // Filename Logic
+                    a.download = "Brush4Laughs-Guide.pdf";
+
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert("Failed to generate PDF");
+                })
+                .finally(() => {
+                    setDownloadingType(null);
+                });
+        } catch (e) {
+            console.error(e);
+            setDownloadingType(null);
+        }
     };
 
     return (
@@ -288,12 +375,14 @@ export default function CreatePage() {
                             printSize={printSize}
                             customDim={customDim}
                             isUploading={isUploading}
+                            sizeUnit={sizeUnit}
                             onCropChange={setCrop}
                             onZoomChange={setZoom}
                             onCropComplete={(_, pixels) => setCroppedAreaPixels(pixels)}
                             onOrientationChange={handleOrientationChange}
                             onPrintSizeSelect={handlePrintSizeSelect}
                             onCustomDimChange={handleCustomDimChange}
+                            onSizeUnitChange={setSizeUnit}
                             onBack={() => setStep("upload")}
                             onNext={handleCropConfirm}
                         />
@@ -310,6 +399,12 @@ export default function CreatePage() {
                             setColors={setColors}
                             setComplexity={setComplexity}
                             setColorOpacity={setColorOpacity}
+                            faceDetail={faceDetail}
+                            bodyDetail={bodyDetail}
+                            bgDetail={bgDetail}
+                            setFaceDetail={setFaceDetail}
+                            setBodyDetail={setBodyDetail}
+                            setBgDetail={setBgDetail}
                             onGenerate={generatePreview}
                             onBack={() => setStep("crop")}
                         />
@@ -334,6 +429,7 @@ export default function CreatePage() {
                                     croppedAreaPixels={croppedAreaPixels}
                                     setOpacity={setOpacity}
                                     setUnit={setUnit}
+                                    downloadingType={downloadingType}
                                     onDownload={handleDownload}
                                     onReset={() => setStep("options")}
                                 />

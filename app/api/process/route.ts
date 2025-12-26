@@ -3,9 +3,18 @@ import { getImagePath } from "@/lib/storage";
 import { processImage } from "@/lib/processing/pipeline";
 import { saveImage } from "@/lib/storage";
 
+export const maxDuration = 60; // Allow 60 seconds for high-res processing
+export const config = {
+    api: {
+        bodyParser: {
+            sizeLimit: '20mb',
+        },
+    },
+};
+
 export async function POST(req: NextRequest) {
     try {
-        const { imageUrl, colors, complexity, customDim } = await req.json();
+        const { imageUrl, colors, complexity, customDim, faceDetail, bodyDetail, bgDetail } = await req.json();
 
         if (!imageUrl) {
             return NextResponse.json({ error: "Missing imageUrl" }, { status: 400 });
@@ -33,7 +42,13 @@ export async function POST(req: NextRequest) {
         }
 
         // Process
-        const result = await processImage(localPath, colors || 24, complexity || 5, customDim);
+        const result = await processImage(
+            localPath,
+            colors || 24,
+            complexity || 5,
+            customDim,
+            { faceDetail, bodyDetail, bgDetail } // Pass Options
+        );
 
         return NextResponse.json(result);
 

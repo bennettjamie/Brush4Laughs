@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Loader2 } from "lucide-react";
 import { LOADING_STEPS } from "@/lib/constants";
+import { PainterAnimation } from "./PainterAnimation";
 
 type LoadingScreenProps = {
     loadingStep: number;
@@ -30,6 +30,38 @@ const REASSURANCE_MESSAGES = [
     "Calculating final dimensions...",
     "Verifying color contrast...",
     "Preparing preview assets...",
+    // Extended Unique Messages
+    "Simulating brush strokes...",
+    "Balancing tonal values...",
+    "Mapping color regions...",
+    "Detecting intricate edges...",
+    "Removing digital noise...",
+    "Sharpening fine details...",
+    "Calibrating opacity levels...",
+    "Synthesizing final output...",
+    "Checking region paintability...",
+    "Optimizing number placement...",
+    "Reviewing canvas geometry...",
+    "Applying artistic filters...",
+    "Processing high-res details...",
+    "Merging similar zones...",
+    "Enhancing visual clarity...",
+    "Preparing digital easel...",
+    "Mixing virtual pigments...",
+    "Drafting outline layers...",
+    "Composing final layout...",
+    "Adjusting contrast curves...",
+    "Refining micro-details...",
+    "Validating print resolution...",
+    "Generating color guide...",
+    "Structuring number map...",
+    "Final polishing pass...",
+    "Ensuring artifact-free output...",
+    "Checking localized contrast...",
+    "Optimizing for acrylics...",
+    "rendering final vectors...",
+    "Almost ready for you...",
+    "Wrapping up the magic...",
     "Thank you for your patience...",
     "Nearly finished, preparing preview...",
 ];
@@ -42,8 +74,14 @@ export function LoadingScreen({ loadingStep, loadingProgress, colors, printSizeN
     useEffect(() => {
         if (isLastStep) {
             const interval = setInterval(() => {
-                setMessageIndex(prev => Math.min(prev + 1, REASSURANCE_MESSAGES.length - 1));
-            }, 4500);
+                setMessageIndex(prev => {
+                    // Loop the last 5 messages to keep UI alive indefinitely
+                    if (prev >= REASSURANCE_MESSAGES.length - 1) {
+                        return REASSURANCE_MESSAGES.length - 5;
+                    }
+                    return prev + 1;
+                });
+            }, 3500);
             return () => clearInterval(interval);
         } else {
             setMessageIndex(0);
@@ -57,31 +95,17 @@ export function LoadingScreen({ loadingStep, loadingProgress, colors, printSizeN
             exit={{ opacity: 0, scale: 1.05 }}
             className="text-center py-16 md:py-32 flex flex-col items-center max-w-2xl mx-auto w-full relative z-10"
         >
-            <div className="relative mb-16">
-                {/* Outer pulsing ring */}
-                <motion.div
-                    animate={{
-                        scale: [1, 1.2, 1],
-                        opacity: [0.1, 0.3, 0.1]
-                    }}
-                    transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                    className="absolute inset-[-20px] bg-indigo-500 rounded-full blur-3xl"
-                />
-
-                <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
-                    className="w-32 h-32 md:w-40 md:h-40 rounded-full border-[1px] border-indigo-500/20 border-t-indigo-500 shadow-[inset_0_0_20px_rgba(99,102,241,0.1)]"
-                />
-                <motion.div
-                    animate={{ scale: [1, 1.05, 1] }}
-                    transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-                    className="absolute inset-0 flex items-center justify-center"
+            <div className="relative mb-2 w-full max-w-2xl px-4">
+                <PainterAnimation progress={loadingProgress} />
+                {/* Disclaimer Message */}
+                <motion.p
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 5 }}
+                    className="text-center text-lg md:text-xl font-medium text-muted-foreground mt-4 mb-8"
                 >
-                    <div className="w-20 h-20 md:w-24 md:h-24 bg-background border border-foreground/10 rounded-full flex items-center justify-center shadow-2xl backdrop-blur-xl">
-                        <Loader2 className="w-10 h-10 md:w-12 md:h-12 text-indigo-500 dark:text-indigo-400 animate-spin-slow" />
-                    </div>
-                </motion.div>
+                    This work will take some time, you might want to come back in a bit.
+                </motion.p>
             </div>
 
             <motion.div

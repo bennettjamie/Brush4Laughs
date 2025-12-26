@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Large Archives & Uploads
+*.tar.gz
+*.zip
+public/uploads/*
+!public/uploads/.gitkeep

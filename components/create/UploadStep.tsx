@@ -26,7 +26,10 @@ export function UploadStep({ isUploading, onFileChange }: UploadStepProps) {
                         <div className="absolute inset-0 bg-indigo-500/20 rounded-full blur-2xl group-hover:bg-indigo-500/40 transition-all duration-500" />
                         <div className="relative w-full h-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-500 backdrop-blur-sm">
                             {isUploading ? (
-                                <Loader2 className="w-10 h-10 text-indigo-400 animate-spin" />
+                                <div className="flex flex-col items-center gap-2">
+                                    <Loader2 className="w-10 h-10 text-indigo-400 animate-spin" />
+                                    <span className="text-sm font-medium text-indigo-500 animate-pulse">Uploading...</span>
+                                </div>
                             ) : (
                                 <Upload className="w-10 h-10 text-indigo-400" />
                             )}

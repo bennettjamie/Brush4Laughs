@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { saveImage } from "@/lib/storage";
 
+export const config = {
+    api: {
+        bodyParser: {
+            sizeLimit: '20mb',
+        },
+    },
+};
+
 export async function POST(req: NextRequest) {
     try {
         const formData = await req.formData();
@@ -15,9 +23,9 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Invalid file type. Please upload an image." }, { status: 400 });
         }
 
-        // 10MB limit
-        if (file.size > 10 * 1024 * 1024) {
-            return NextResponse.json({ error: "File too large (max 10MB)" }, { status: 400 });
+        // 20MB limit
+        if (file.size > 20 * 1024 * 1024) {
+            return NextResponse.json({ error: "File too large (max 20MB)" }, { status: 400 });
         }
 
         const url = await saveImage(file);

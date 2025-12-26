@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Eye, Check, RefreshCw } from "lucide-react";
+import { Eye, Check, RefreshCw, FileDown, BookOpen } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { Area } from "react-easy-crop";
@@ -13,7 +13,8 @@ type PreviewStepProps = {
     croppedAreaPixels: Area | null;
     setOpacity: (val: number) => void;
     setUnit: (val: "ml" | "oz") => void;
-    onDownload: () => void;
+    downloadingType: "canvas" | "guide" | "canvas-reverse" | null;
+    onDownload: (type: "canvas" | "guide" | "canvas-reverse") => void; // Updated Signature
     onReset: () => void;
 };
 
@@ -26,6 +27,7 @@ export function PreviewStep({
     croppedAreaPixels,
     setOpacity,
     setUnit,
+    downloadingType,
     onDownload,
     onReset,
 }: PreviewStepProps) {
@@ -118,7 +120,9 @@ export function PreviewStep({
                                     <div className="font-mono font-black text-sm text-indigo-300/90 tracking-tighter">
                                         {unit === "ml" ? `${Math.round(item.amount)}ml` : `${(item.amount * 0.0338).toFixed(1)}oz`}
                                     </div>
-                                    <div className="text-xs text-muted-foreground dark:text-slate-300 font-black uppercase tracking-widest">{Math.round(item.percentage)}% area</div>
+                                    <div className="text-xs text-muted-foreground dark:text-slate-300 font-black uppercase tracking-widest">
+                                        {item.percentage < 1 ? item.percentage.toFixed(1) : Math.round(item.percentage)}% area
+                                    </div>
                                 </div>
                             </div>
                         ))}
@@ -126,25 +130,49 @@ export function PreviewStep({
                 </div>
 
                 <div className="bg-gradient-to-br from-indigo-500/10 to-violet-500/10 border border-indigo-500/20 p-8 rounded-[2rem] shadow-2xl relative overflow-hidden group/kit">
-                    <div className="absolute -bottom-4 -right-4 opacity-5 group-hover/kit:scale-110 transition-transform duration-700">
-                        <Check className="w-24 h-24" />
-                    </div>
                     <h3 className="text-indigo-700 dark:text-indigo-100 font-black mb-6 flex items-center gap-4 uppercase tracking-[0.3em] text-base bg-indigo-50 dark:bg-indigo-900/50 py-3 px-6 rounded-2xl w-fit border border-indigo-200 dark:border-indigo-400/30 shadow-xl">
-                        <Check className="w-6 h-6 text-emerald-600 dark:text-emerald-400" /> Studio Status: Ready
+                        <Check className="w-6 h-6 text-emerald-600 dark:text-emerald-400" /> Downloads
                     </h3>
-                    <p className="text-lg text-foreground mb-10 font-bold leading-relaxed italic bg-slate-50 dark:bg-white/5 p-6 rounded-2xl border border-slate-200 dark:border-white/10">
-                        Your professional-grade canvas and palette orchestration are synthesized. Synthesis includes high-fidelity outlines and standard blending protocols.
-                    </p>
-                    <button
-                        onClick={() => {
-                            if (window.confirm("Please confirm: Are all facial details clear? Are you happy with the complexity level? Click OK to export.")) {
-                                onDownload();
-                            }
-                        }}
-                        className="w-full py-5 bg-emerald-600 text-white rounded-2xl font-black hover:bg-emerald-500 transition-all shadow-[0_0_30px_-5px_rgba(16,185,129,0.4)] active:scale-95 flex items-center justify-center gap-4 text-xl"
-                    >
-                        Export Studio PDF
-                    </button>
+
+                    <div className="grid grid-cols-1 gap-4">
+                        <button
+                            onClick={() => onDownload("canvas")}
+                            disabled={!!downloadingType}
+                            title="For Printing to Canvas"
+                            className={cn(
+                                "w-full py-4 rounded-2xl font-black transition-all shadow-xl active:scale-95 flex items-center justify-center gap-3 text-lg relative overflow-hidden",
+                                downloadingType === "canvas" ? "bg-slate-400 cursor-not-allowed text-slate-200" : (downloadingType ? "bg-slate-200 text-slate-400 cursor-not-allowed" : "bg-emerald-600 text-white hover:bg-emerald-500")
+                            )}
+                        >
+                            {downloadingType === "canvas" ? <RefreshCw className="w-6 h-6 animate-spin" /> : <FileDown className="w-6 h-6" />}
+                            {downloadingType === "canvas" ? "Generating..." : "Download Canvas"}
+                        </button>
+
+                        <button
+                            onClick={() => onDownload("canvas-reverse" as any)}
+                            disabled={!!downloadingType}
+                            title="For Craft Transfer to Canvas"
+                            className={cn(
+                                "w-full py-4 rounded-2xl font-black transition-all shadow-xl active:scale-95 flex items-center justify-center gap-3 text-lg relative overflow-hidden",
+                                downloadingType === "canvas-reverse" ? "bg-slate-400 cursor-not-allowed text-slate-200" : (downloadingType ? "bg-slate-200 text-slate-400 cursor-not-allowed" : "bg-purple-600 text-white hover:bg-purple-500")
+                            )}
+                        >
+                            {downloadingType === "canvas-reverse" ? <RefreshCw className="w-6 h-6 animate-spin" /> : <FileDown className="w-6 h-6 transform scale-x-[-1]" />}
+                            {downloadingType === "canvas-reverse" ? "Generating..." : "Download Reverse"}
+                        </button>
+
+                        <button
+                            onClick={() => onDownload("guide")}
+                            disabled={!!downloadingType}
+                            className={cn(
+                                "w-full py-4 rounded-2xl font-black transition-all shadow-xl active:scale-95 flex items-center justify-center gap-3 text-lg",
+                                downloadingType === "guide" ? "bg-slate-400 cursor-not-allowed text-slate-200" : (downloadingType ? "bg-slate-200 text-slate-400 cursor-not-allowed" : "bg-blue-600 text-white hover:bg-blue-500")
+                            )}
+                        >
+                            {downloadingType === "guide" ? <RefreshCw className="w-6 h-6 animate-spin" /> : <BookOpen className="w-6 h-6" />}
+                            {downloadingType === "guide" ? "Generating..." : "Download Guide"}
+                        </button>
+                    </div>
                 </div>
 
                 <button

@@ -13,12 +13,14 @@ type CropStepProps = {
     printSize: PrintSize;
     customDim: { width: number; height: number };
     isUploading: boolean;
+    sizeUnit: "in" | "cm";
     onCropChange: (crop: Point) => void;
     onZoomChange: (zoom: number) => void;
     onCropComplete: (croppedArea: Area, croppedAreaPixels: Area) => void;
     onOrientationChange: (landscape: boolean) => void;
     onPrintSizeSelect: (size: PrintSize) => void;
     onCustomDimChange: (field: 'width' | 'height', val: string) => void;
+    onSizeUnitChange: (unit: "in" | "cm") => void;
     onBack: () => void;
     onNext: () => void;
 };
@@ -32,15 +34,34 @@ export function CropStep({
     printSize,
     customDim,
     isUploading,
+    sizeUnit,
     onCropChange,
     onZoomChange,
     onCropComplete,
     onOrientationChange,
     onPrintSizeSelect,
     onCustomDimChange,
+    onSizeUnitChange,
     onBack,
     onNext,
 }: CropStepProps) {
+
+    // Helper to format size label
+    const getSizeLabel = (size: PrintSize) => {
+        if (size.category === "Paper") return size.name;
+        if (size.name === "Custom") return "Custom";
+
+        let w = size.width;
+        let h = size.height;
+
+        if (sizeUnit === "cm") {
+            w = Math.round(w * 2.54);
+            h = Math.round(h * 2.54);
+        }
+
+        return `${w}x${h}`;
+    };
+
     return (
         <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -71,8 +92,14 @@ export function CropStep({
                         </div>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-3">
-                        <div className="flex flex-wrap gap-1 bg-slate-100 dark:bg-white/5 p-1 rounded-xl border border-slate-200 dark:border-white/5">
+                    <div className="flex flex-wrap items-center gap-3 w-full overflow-hidden">
+                        <div className="flex flex-nowrap gap-1 bg-slate-100 dark:bg-white/5 p-1 rounded-xl border border-slate-200 dark:border-white/5 overflow-x-auto no-scrollbar max-w-full">
+                            {/* Unit Toggle */}
+                            <div className="flex bg-white dark:bg-white/5 rounded-lg p-0.5 mr-2 shadow-sm">
+                                <button onClick={() => onSizeUnitChange("in")} className={cn("px-2 py-1 text-[10px] font-black rounded-md transition-colors", sizeUnit === "in" ? "bg-indigo-100 text-indigo-700" : "text-slate-400 hover:text-slate-600")}>IN</button>
+                                <button onClick={() => onSizeUnitChange("cm")} className={cn("px-2 py-1 text-[10px] font-black rounded-md transition-colors", sizeUnit === "cm" ? "bg-indigo-100 text-indigo-700" : "text-slate-400 hover:text-slate-600")}>CM</button>
+                            </div>
+
                             {PRINT_SIZES.map((size) => (
                                 <button
                                     key={size.name}
@@ -84,7 +111,7 @@ export function CropStep({
                                             : "text-slate-600 dark:text-slate-400 hover:text-foreground hover:bg-slate-200 dark:hover:bg-white/[0.02]"
                                     )}
                                 >
-                                    <span>{size.name}</span>
+                                    <span>{getSizeLabel(size)}</span>
                                     <span className="text-[10px] opacity-60">{size.category}</span>
                                 </button>
                             ))}
@@ -100,20 +127,28 @@ export function CropStep({
                                 <div className="flex items-center gap-2 bg-indigo-500/10 p-1.5 rounded-xl border border-indigo-500/20">
                                     <input
                                         type="number"
-                                        value={customDim.width}
-                                        onChange={(e) => onCustomDimChange('width', e.target.value)}
-                                        className="w-12 bg-transparent text-center text-sm font-black text-indigo-300 focus:outline-none"
+                                        value={sizeUnit === "in" ? customDim.width : Math.round(customDim.width * 2.54 * 10) / 10}
+                                        onChange={(e) => {
+                                            const val = parseFloat(e.target.value) || 0;
+                                            const inches = sizeUnit === "in" ? val : val / 2.54;
+                                            onCustomDimChange('width', inches.toString());
+                                        }}
+                                        className="w-14 bg-transparent text-center text-sm font-black text-indigo-300 focus:outline-none"
                                         placeholder="W"
                                     />
                                     <span className="text-indigo-500/50 text-xs font-bold">×</span>
                                     <input
                                         type="number"
-                                        value={customDim.height}
-                                        onChange={(e) => onCustomDimChange('height', e.target.value)}
-                                        className="w-12 bg-transparent text-center text-sm font-black text-indigo-300 focus:outline-none"
+                                        value={sizeUnit === "in" ? customDim.height : Math.round(customDim.height * 2.54 * 10) / 10}
+                                        onChange={(e) => {
+                                            const val = parseFloat(e.target.value) || 0;
+                                            const inches = sizeUnit === "in" ? val : val / 2.54;
+                                            onCustomDimChange('height', inches.toString());
+                                        }}
+                                        className="w-14 bg-transparent text-center text-sm font-black text-indigo-300 focus:outline-none"
                                         placeholder="H"
                                     />
-                                    <span className="text-sm font-black text-indigo-400 uppercase tracking-widest pr-2">in</span>
+                                    <span className="text-sm font-black text-indigo-400 uppercase tracking-widest pr-2">{sizeUnit}</span>
                                 </div>
                             </motion.div>
                         )}
