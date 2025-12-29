@@ -1,13 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { saveImage } from "@/lib/storage";
 
-export const config = {
-    api: {
-        bodyParser: {
-            sizeLimit: '20mb',
-        },
-    },
-};
+
 
 export async function POST(req: NextRequest) {
     try {

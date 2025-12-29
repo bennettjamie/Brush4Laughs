@@ -4,13 +4,7 @@ import { processImage } from "@/lib/processing/pipeline";
 import { saveImage } from "@/lib/storage";
 
 export const maxDuration = 60; // Allow 60 seconds for high-res processing
-export const config = {
-    api: {
-        bodyParser: {
-            sizeLimit: '20mb',
-        },
-    },
-};
+
 
 export async function POST(req: NextRequest) {
     try {
