@@ -1,6 +1,6 @@
 import { jsPDF, GState } from "jspdf";
 import { loadImage, loadOptimizedImage } from "./assets";
-import { getAcrylicRecipe, getShoppingList, getStandardHex } from "../colors/mixing"; // Import Mixing Logic
+import { getAcrylicRecipe, getShoppingList, getStandardHex, getInventoryRequirements } from "../colors/mixing"; // Import Mixing Logic
 
 interface GuideOptions {
     originalUrl?: string; // Optional path to original Uploaded image
@@ -335,8 +335,11 @@ export async function generateGuidePDF(options: GuideOptions): Promise<jsPDF> {
     docGuide.setFont("helvetica", "normal");
     docGuide.text("Everything you need to complete your masterpiece.", shopW / 2, 48, { align: "center" });
 
-    // SECTION 1: Base Paints (Swatches)
-    const requiredPaints = getShoppingList(palette.map(p => p.color));
+    // SECTION 1: Base Paints (Swatches + Volumes)
+    // 1. Calculate Aggregated Volumes
+    // import { getInventoryRequirements } from "../colors/mixing"; // REMOVED
+    const inventory = getInventoryRequirements(palette);
+    const requiredPaints = Object.keys(inventory).sort();
 
     let shopY = 65;
 
@@ -372,11 +375,16 @@ export async function generateGuidePDF(options: GuideOptions): Promise<jsPDF> {
         docGuide.setDrawColor(200, 200, 200);
         docGuide.circle(px + 12, py + 2.5, 3, "FD");
 
-        // Name
+        // Name + Volume
+        const vol = Math.ceil(inventory[paint]); // Round up to nearest ml
+        const displayUnit = unit === "ml" ? "ml" : "oz";
+        // Note: Logic assumes input 'amount' is in ML. Converting to OZ if needed:
+        const dispVol = unit === "ml" ? vol : Math.ceil(vol * 0.0338);
+
         docGuide.setFontSize(10);
         docGuide.setTextColor(40, 40, 40);
         docGuide.setFont("helvetica", "bold");
-        docGuide.text(paint, px + 19, py + 3.5);
+        docGuide.text(`${paint} (${dispVol}${displayUnit})`, px + 19, py + 3.5);
     });
 
     shopY += (Math.ceil(requiredPaints.length / paintCols) * paintRowH) + 20;

@@ -130,6 +130,60 @@ export function getShoppingList(paletteHexes: string[]): string[] {
     return Array.from(needed).sort();
 }
 
+/**
+ * Calculates the total volume needed for each base paint tube, 
+ * aggregating amounts from all mixed colors in the palette.
+ */
+export function getInventoryRequirements(palette: { color: string, amount: number }[]): Record<string, number> {
+    const totals: Record<string, number> = {};
+
+    const addToTotal = (name: string, amt: number) => {
+        totals[name] = (totals[name] || 0) + amt;
+    };
+
+    // Ratios corresponding to mixing.ts generation logic
+    // "1:1" -> [0.5, 0.5]
+    // "2:1" -> [0.67, 0.33]
+    // "3:1" -> [0.75, 0.25]
+    // "4:1" -> [0.8, 0.2]
+    const ratioMap: Record<string, number> = {
+        "1:1": 0.5,
+        "2:1": 0.666,
+        "3:1": 0.75,
+        "4:1": 0.8
+    };
+
+    for (const p of palette) {
+        const recipe = getAcrylicRecipe(p.color);
+
+        if (recipe.includes("Use standard")) {
+            const match = recipe.match(/\[([^\]]+)\]/);
+            if (match) {
+                addToTotal(match[1], p.amount);
+            }
+        } else if (recipe.includes("Mix")) {
+            // Format: "Mix [Color1] & [Color2] (Ratio)"
+            // Example: "Mix [Phthalo Green] & [Lamp Black] (4:1)"
+            const matches = [...recipe.matchAll(/\[([^\]]+)\]/g)];
+            const ratioMatch = recipe.match(/\(([^)]+)\)/); // Finds "(4:1)"
+
+            if (matches.length >= 2 && ratioMatch) {
+                const c1 = matches[0][1];
+                const c2 = matches[1][1];
+                const ratioStr = ratioMatch[1];
+
+                const primaryFraction = ratioMap[ratioStr] || 0.5;
+                const secondaryFraction = 1.0 - primaryFraction;
+
+                addToTotal(c1, p.amount * primaryFraction);
+                addToTotal(c2, p.amount * secondaryFraction);
+            }
+        }
+    }
+
+    return totals;
+}
+
 export function getStandardHex(name: string): string {
     const found = STANDARD_ACRYLIC_24.find(p => p.name === name);
     return found ? found.hex : "#CCCCCC"; // Default gray if not found

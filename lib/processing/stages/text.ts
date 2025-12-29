@@ -16,20 +16,7 @@ export async function runTextDetection(preprocess: PreprocessResult): Promise<Te
 
     console.log("[Text] Starting Text Detection...");
 
-    // Convert raw buffer to a format Tesseract handles (ImageData-like or Buffer)
-    // Tesseract.js in Node accepts Buffer directly if we provide dimensions? 
-    // Actually, it's easier to pass the buffer, but `recognize` expects an image-like object.
-
-    // We can pass the raw buffer if we wrap it or just use the raw data?
-    // Let's rely on Tesseract's ability to handle raw data if we pass proper options or headers.
-    // Simpler: Use Sharp to encode to a robust format (PNG) then pass buffer. 
-    // Wait, we don't have Sharp here, it's upstream. 
-    // But we have `sharp` in dependency. Let's import it to make a PNG buffer.
-
-    // Correction: We do not want to add heavy imports if avoidable, but Sharp is already used in `refinement.ts`? 
-    // No, `refinement` uses `sharp` only implicitly via pipeline structure? 
-    // Actually `preprocess.ts` uses Sharp. We can import sharp here.
-
+    // Dynamic import to avoid server-side bundling issues if not handled by safeguards
     const sharp = (await import("sharp")).default;
 
     // DETAIL LOGIC:
@@ -42,13 +29,14 @@ export async function runTextDetection(preprocess: PreprocessResult): Promise<Te
     }
 
     // 2. High-Res Mode Loop
-    // Default Fast: 1024px (Good for headlines)
-    // High Detail (>50): 2048px (Good for small text)
-    const MAX_TEXT_WIDTH = textDetail > 50 ? 2500 : 1024;
+    // Default Fast: 1500px (Better balance)
+    // High Detail (>50): 2500px (Good for small text)
+    const MAX_TEXT_WIDTH = textDetail > 50 ? 2500 : 1500;
 
     let detectionWidth = width;
     let detectionHeight = height;
     let scaleFactor = 1.0;
+
     let pipeline = sharp(data, {
         raw: {
             width,
@@ -69,7 +57,7 @@ export async function runTextDetection(preprocess: PreprocessResult): Promise<Te
     const pngBuffer = await pipeline.png().toBuffer();
 
     // WRAPPER: Timeout Protection
-    // If Tesseract takes > 15 seconds, we abort. It's better to lose text protection than hang the app.
+    // If Tesseract takes > 15 seconds, we abort.
     const TIMEOUT_MS = 15000;
     let worker: Tesseract.Worker | null = null;
     let timeoutTimer: NodeJS.Timeout | null = null;
@@ -77,13 +65,12 @@ export async function runTextDetection(preprocess: PreprocessResult): Promise<Te
     try {
         console.log("[Text] Initializing Tesseract Worker...");
 
-        // Race Worker Creation + Recognition against a Timer
         const recognitionTask = (async () => {
             worker = await Tesseract.createWorker("eng", 1, {
                 errorHandler: (err) => console.error("[Text] Tesseract Error:", err)
             });
             console.log("[Text] Worker Ready. Recognizing...");
-            return await worker.recognize(pngBuffer as any);
+            return await worker!.recognize(pngBuffer as any);
         })();
 
         const timeoutPromise = new Promise<never>((_, reject) => {
@@ -92,19 +79,18 @@ export async function runTextDetection(preprocess: PreprocessResult): Promise<Te
             }, TIMEOUT_MS);
         });
 
-        // @ts-ignore - Promise.race types can be tricky with never
+        // @ts-ignore
         const ret = await Promise.race([recognitionTask, timeoutPromise]);
 
         if (timeoutTimer) clearTimeout(timeoutTimer);
 
         const boxes: TextBox[] = [];
-        // Force type check bypass for 'words' property which exists at runtime
-        const data = (ret as any).data;
+        const resultData = (ret as any).data;
 
-        if (data && data.words) {
-            data.words.forEach((w: any) => {
-                // Relaxed confidence slightly to catch artistic text
-                if (w.confidence > 50) {
+        if (resultData && resultData.words) {
+            resultData.words.forEach((w: any) => {
+                // Relaxed confidence (40) to catch artistic text
+                if (w.confidence > 40) {
                     boxes.push({
                         x: w.bbox.x0 / scaleFactor,
                         y: w.bbox.y0 / scaleFactor,
@@ -122,7 +108,7 @@ export async function runTextDetection(preprocess: PreprocessResult): Promise<Te
 
     } catch (e) {
         console.warn("[Text] Skipped:", e);
-        return []; // Return empty on timeout/fail to keep pipeline alive
+        return [];
     } finally {
         if (timeoutTimer) clearTimeout(timeoutTimer);
         if (worker) {

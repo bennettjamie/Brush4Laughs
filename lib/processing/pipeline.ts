@@ -233,7 +233,8 @@ export async function processImage(
         const areaMm2 = count / (pixelsPerMm * pixelsPerMm);
         const areaCm2 = areaMm2 / 100;
         const COVERAGE_CM2_PER_ML = 15;
-        let estimatedMl = (areaCm2 / COVERAGE_CM2_PER_ML) * 1.2;
+        // Safety Factor 1.25 (+25% buffer) as requested
+        let estimatedMl = (areaCm2 / COVERAGE_CM2_PER_ML) * 1.25;
         estimatedMl = Math.max(0.5, estimatedMl);
 
         return {

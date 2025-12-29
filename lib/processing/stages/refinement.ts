@@ -220,10 +220,12 @@ export function runRefinement(
                             if (cx >= box.x && cx <= box.x + box.width &&
                                 cy >= box.y && cy <= box.y + box.height) {
 
-                                // Map Slider (20-100) to Threshold (10-1)
-                                // 20 -> 10px
-                                // 100 -> 1px
-                                const t = Math.max(0, (textD - 20) / 80);
+                                // Map Slider (1-100) to Threshold (10-1)
+                                // Detail 1 => 10px (Protect obvious text)
+                                // Detail 50 => 5px
+                                // Detail 100 => 1px (Micro protection)
+
+                                const t = textD / 100; // 0.0 to 1.0
                                 const textThresh = Math.round(10 - t * 9); // 10 down to 1
 
                                 // FORCE LOWER THRESHOLD

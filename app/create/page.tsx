@@ -41,7 +41,7 @@ export default function CreatePage() {
     const [faceDetail, setFaceDetail] = useState(50);
     const [bodyDetail, setBodyDetail] = useState(50);
     const [bgDetail, setBgDetail] = useState(50);
-    const [textDetail, setTextDetail] = useState(0); // Default 0 (Off/Auto)
+    const [textDetail, setTextDetail] = useState(10); // Default 10% (Low/Safe protection)
 
     // Result state
     const [resultImage, setResultImage] = useState<string | null>(null);
