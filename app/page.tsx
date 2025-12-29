@@ -29,7 +29,10 @@ export default function Home() {
             <span className="text-3xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-slate-900 via-slate-700 to-slate-500 dark:from-white dark:via-white dark:to-slate-400">
               Brush4Laughs
             </span>
-            <span className="text-sm font-black uppercase tracking-[0.2em] text-indigo-600 dark:text-indigo-400 -mt-1 ml-0.5">Studio Edition</span>
+            <span className="text-sm font-black uppercase tracking-[0.2em] text-indigo-600 dark:text-indigo-400 -mt-1 ml-0.5 flex items-center gap-2">
+              Studio Edition
+              <span className="px-1.5 py-0.5 rounded-md bg-amber-500/10 text-amber-600 text-[0.6em] border border-amber-500/20">BETA</span>
+            </span>
           </div>
         </div>
         <div className="hidden md:flex items-center gap-8 text-sm font-medium text-muted-foreground">

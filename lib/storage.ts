@@ -29,8 +29,8 @@ export async function saveImage(file: File): Promise<string> {
 
     await fs.writeFile(filepath, buffer);
 
-    // Return the public URL
-    return `/uploads/${filename}`;
+    // Return the dynamic API URL to ensure runtime serving works
+    return `/api/images/${filename}`;
 }
 
 export async function getImagePath(url: string): Promise<string> {

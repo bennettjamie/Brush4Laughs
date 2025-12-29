@@ -1,4 +1,4 @@
-import { Heart, Mail } from "lucide-react";
+import { Heart, Mail, Facebook, Instagram } from "lucide-react";
 
 export function Footer() {
     return (
@@ -57,6 +57,62 @@ export function Footer() {
                                 <a href="mailto:feedback@brush4laughs.com" className="text-indigo-300 hover:text-white transition-colors font-mono">
                                     feedback@brush4laughs.com
                                 </a>
+                            </div>
+
+                            <div className="w-full h-px bg-white/10" />
+
+                            <div>
+                                <div className="text-xs uppercase tracking-widest text-slate-500 font-bold mb-3">Community & Social</div>
+                                <div className="space-y-3">
+                                    <a href="/community" className="block text-indigo-300 hover:text-white transition-colors">
+                                        Our Community
+                                    </a>
+
+                                    <div className="flex items-center gap-4">
+                                        {/* Facebook */}
+                                        <a
+                                            href="https://facebook.com/brush4laughs"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="w-10 h-10 rounded-full bg-white/5 hover:bg-indigo-600 flex items-center justify-center transition-all group"
+                                            aria-label="Facebook"
+                                        >
+                                            <Facebook className="w-5 h-5 text-slate-400 group-hover:text-white transition-colors" />
+                                        </a>
+
+                                        {/* Instagram */}
+                                        <a
+                                            href="https://instagram.com/brush4laughs"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="w-10 h-10 rounded-full bg-white/5 hover:bg-pink-600 flex items-center justify-center transition-all group"
+                                            aria-label="Instagram"
+                                        >
+                                            <Instagram className="w-5 h-5 text-slate-400 group-hover:text-white transition-colors" />
+                                        </a>
+
+                                        {/* TikTok */}
+                                        <a
+                                            href="https://tiktok.com/@brush4laughs"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="w-10 h-10 rounded-full bg-white/5 hover:bg-black flex items-center justify-center transition-all group"
+                                            aria-label="TikTok"
+                                        >
+                                            <svg
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                strokeWidth="2"
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                className="w-5 h-5 text-slate-400 group-hover:text-white transition-colors"
+                                            >
+                                                <path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5" />
+                                            </svg>
+                                        </a>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
