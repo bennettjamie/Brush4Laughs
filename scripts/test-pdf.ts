@@ -15,7 +15,9 @@ async function test() {
                 { color: "#ABCDEF", name: "Pale Blue", amount: 5, percentage: 5 }, // Mix
                 { color: "#C76114", name: "Raw Sienna", amount: 5, percentage: 5 }, // Exact match
             ],
-            unit: "ml"
+            unit: "ml",
+            outlineUrl: "/uploads/0632e182-ce64-464c-a509-f8b6300fff0a.png", // Dummy
+            opacity: 50
         });
 
         console.log("PDF Generated. Saving...");
