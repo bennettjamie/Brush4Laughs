@@ -6,7 +6,7 @@ export function runQuantize(
     numColors: number
 ): QuantizeResult {
     const { data } = preprocess;
-    const { faces, width } = preprocess;
+    const { faces, width, height } = preprocess;
 
     // Helper: Is pixel in Subject mask? (Face, Body, or Center)
     const isSubject = (idx: number) => {
@@ -44,13 +44,21 @@ export function runQuantize(
     const bodyPixels: number[][] = []; // Formally 'subjectPixels' excluding face
     const bgPixels: number[][] = [];
 
-    // Helper to check if index is inside ANY face box
-    const isInFaceBox = (x: number, y: number) => {
+    // Helper to check if index is inside ANY face oval (elliptical)
+    const isInFaceOval = (x: number, y: number) => {
         if (!faces) return false;
         for (const f of faces) {
-            // Tighter check for exclusion (don't exclude neck/hair too aggressively if box is huge)
-            // Use 90% of box to be safe? No, let's use full box.
-            if (x >= f.x && x <= f.x + f.width && y >= f.y && y <= f.y + f.height) return true;
+            const fcx = f.x + (f.width / 2);
+            const fcy = f.y + (f.height / 2);
+            const rx = f.width / 2;
+            const ry = f.height / 2;
+
+            // Normalize coordinate
+            const dx = (x - fcx) / Math.max(1, rx);
+            const dy = (y - fcy) / Math.max(1, ry);
+
+            // Check Ellipse: x^2 + y^2 <= 1
+            if ((dx * dx + dy * dy) <= 1.0) return true;
         }
         return false;
     };
@@ -68,11 +76,22 @@ export function runQuantize(
         return Math.max(1, Math.round(maxStep - t * (maxStep - minStep)));
     };
 
-    const STEP_DETAIL = mapStep(faceD, 1, 4);  // Range 1-4
-    const STEP_BODY = mapStep(bodyD, 2, 8);    // Range 2-8
-    const STEP_BG = mapStep(bgD, 15, 60);      // Range 15-60
 
-    console.log(`[Quantize] Sampling Steps: Face=${STEP_DETAIL}, Body=${STEP_BODY}, BG=${STEP_BG}`);
+    const totalPixels = width * height;
+    const TARGET_SAMPLES = 50000;
+
+    // Auto-adjust steps based on resolution to prevent OOM/Slowdown
+    // If we have 12MP image, minStep should be ~240 to get 50k samples.
+    // We want relatively consistent sampling density regardless of image size.
+    const resolutionScalar = Math.max(1, Math.floor(totalPixels / TARGET_SAMPLES));
+
+    console.log(`[Quantize] Resolution Scalar: ${resolutionScalar} (Total Pixels: ${totalPixels})`);
+
+    const STEP_DETAIL = Math.max(mapStep(faceD, 1, 4), Math.floor(resolutionScalar * 0.2)); // Face needs high detail, so smaller step
+    const STEP_BODY = Math.max(mapStep(bodyD, 2, 8), Math.floor(resolutionScalar * 0.5));
+    const STEP_BG = Math.max(mapStep(bgD, 15, 60), Math.floor(resolutionScalar * 1.5)); // BG can be sparse
+
+    console.log(`[Quantize] Sampling Steps (Dynamic): Face=${STEP_DETAIL}, Body=${STEP_BODY}, BG=${STEP_BG}`);
 
     for (let i = 0; i < data.length; i += 4) {
         if (data[i + 3] < 128) continue; // Skip transparent
@@ -84,8 +103,24 @@ export function runQuantize(
         // Classification
         const isSubjectPixel = isSubject(i); // Uses Mask/Faces/Center logic
 
-        if (isSubjectPixel) {
-            if (isInFaceBox(x, y)) {
+        // Text Check (Priority Overrides)
+        let isText = false;
+        if (preprocess.text) {
+            for (const b of preprocess.text) {
+                if (x >= b.x && x <= b.x + b.width && y >= b.y && y <= b.y + b.height) {
+                    isText = true;
+                    break;
+                }
+            }
+        }
+
+        if (isText) {
+            // TEXT PIXEL (Treat as High Priority Face-like)
+            if (pixelIdx % STEP_DETAIL === 0) {
+                facePixels.push([data[i], data[i + 1], data[i + 2]]);
+            }
+        } else if (isSubjectPixel) {
+            if (isInFaceOval(x, y)) {
                 // FACE PIXEL
                 if (pixelIdx % STEP_DETAIL === 0) {
                     facePixels.push([data[i], data[i + 1], data[i + 2]]);

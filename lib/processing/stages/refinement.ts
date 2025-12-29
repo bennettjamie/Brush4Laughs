@@ -96,18 +96,8 @@ export function runRefinement(
                     const cx = regionStart % width;
                     const cy = Math.floor(regionStart / width);
 
-                    // A. Face Zone (Most Critical)
-                    let isFaceRegion = false;
-                    if (preprocess.faces) {
-                        for (const f of preprocess.faces) {
-                            if (cx >= f.x && cx <= f.x + f.width && cy >= f.y && cy <= f.y + f.height) {
-                                isFaceRegion = true;
-                                break;
-                            }
-                        }
-                    }
-
                     // B. Subject Zone (Body)
+                    // We removed the isFaceRegion check because we calculate it dynamically now
                     let isSubjectRegion = false;
                     if (preprocess.mask) {
                         // Check mask at region start
@@ -123,56 +113,124 @@ export function runRefinement(
                     const isCenterRegion = centerDist < (width * 0.4);
 
                     // 2. Threshold Assignment
-                    // 2. Threshold Assignment - DYNAMIC MAPPING
-                    // Face Detail: 100 -> Threshold 0 (Keep all). 0 -> Threshold 30.
-                    // Body Detail: 100 -> Threshold 5. 0 -> Threshold 40.
-                    // BG Detail: 100 -> Threshold 5. 0 -> Threshold 100%.
+                    // 2. Threshold Assignment - DYNAMIC MAPPING with GRADIENT FALLOFF
+                    // Face Detail: 100 -> Thresh 4 (Tiny but paintable). 0 -> Thresh 30.
+                    // Body Detail: 100 -> Thresh 15. 0 -> Thresh 60.
+                    // BG Detail: 100 -> Thresh 40. 0 -> Thresh 200.
 
                     const faceD = preprocess.faceDetail ?? 50;
                     const bodyD = preprocess.bodyDetail ?? 50;
                     const bgD = preprocess.bgDetail ?? 50;
 
                     const mapThresh = (detail: number, low: number, high: number) => {
-                        // High detail (100) = low threshold (low)
                         const t = detail / 100;
                         return Math.round(high - t * (high - low));
                     };
 
-                    if (isFaceRegion) {
-                        // ZONE A: FACE
-                        // High Detail: 0 (Keep all features)
-                        // Low Detail: 30 (Aggressive merging)
-                        const threshBase = mapThresh(faceD, 0, 30);
+                    // Base Thresholds (Tuned for Paintability)
+                    // Face: Never go below 5px (approx 1mm^2) to avoid "pepper noise"
+                    const threshFace = mapThresh(faceD, 4, 30);
+                    const threshBody = mapThresh(bodyD, 15, 60);
 
-                        // Adaptive boost for features
-                        if (minColorDiff > 20) {
-                            sizeThreshold = Math.max(0, threshBase - 10); // Features get lower threshold
-                        } else {
-                            sizeThreshold = threshBase;
+                    // HELPER: Elliptical Distance to nearest face
+                    let minFaceDist = Infinity;
+                    if (preprocess.faces) {
+                        for (const f of preprocess.faces) {
+                            const fcx = f.x + (f.width / 2);
+                            const fcy = f.y + (f.height / 2);
+                            const rx = (f.width / 2) * 1.0; // Full Face Width
+                            const ry = (f.height / 2) * 1.0;
+
+                            const safeRx = Math.max(1, rx);
+                            const safeRy = Math.max(1, ry);
+                            const dx = (cx - fcx) / safeRx;
+                            const dy = (cy - fcy) / safeRy;
+                            const d = Math.sqrt(dx * dx + dy * dy);
+
+                            if (d < minFaceDist) minFaceDist = d;
                         }
                     }
-                    else if (isSubjectRegion) {
-                        // ZONE B: BODY
-                        // High Detail: 5. Low Detail: 40.
-                        sizeThreshold = mapThresh(bodyD, 5, 40);
-                    }
-                    else if (isCenterRegion) {
-                        // ZONE C: CENTER BG
-                        // Link to Body Detail mostly
-                        sizeThreshold = mapThresh(bodyD, 8, 50);
-                    }
-                    else {
-                        // ZONE D: PERIPHERY BG
-                        // High Detail: 20% of Base. Low Detail: 150% of Base.
-                        const bgFactor = mapThresh(bgD, 0.2, 1.5);
-                        sizeThreshold = mergeThresholdPixels * bgFactor;
+
+                    // GRADIENT LOGIC
+                    // 0.0 to 1.0 (Core): Full Face Detail
+                    // 1.0 to 2.0 (Transition): Smooth Ramp from Face to Body
+                    // > 2.0: Body/BG Detail
+
+                    if (minFaceDist < 1.0) {
+                        // ZONE A: CORE FACE
+                        sizeThreshold = threshFace;
+                    } else if (minFaceDist < 2.0) {
+                        // ZONE B: TRANSITION (Feathered Edge)
+                        // t goes from 0.0 (at dist 1.0) to 1.0 (at dist 2.0)
+                        const t = (minFaceDist - 1.0) / 1.0;
+                        // Smoothstep/Ease-in-out for organic fade
+                        const smoothT = t * t * (3 - 2 * t);
+
+                        // Interpolate: Face -> Body (or BG if not subject)
+                        // If it's a subject pixel, fade to Body Thresh. If BG, fade to BG Thresh?
+                        // Usually faces are attached to bodies, so fading to Body Thresh is safer.
+                        const targetThresh = isSubjectRegion ? threshBody : mapThresh(bgD, 40, 200);
+
+                        sizeThreshold = (1 - smoothT) * threshFace + smoothT * targetThresh;
+                    } else if (isSubjectRegion) {
+                        // ZONE C: BODY (Subject Mask)
+                        sizeThreshold = threshBody;
+                    } else {
+                        // ZONE D & E: RADIAL BACKGROUND GRADIENT
+                        // Smoothly transition from Center Detail to Edge Detail
+
+                        const maxDist = Math.max(width, height) / 2;
+                        const normDist = centerDist / maxDist; // 0.0 at center, ~1.0 at corner
+
+                        // Define Transition Range
+                        const innerR = 0.3; // Full Center Detail until 30% out
+                        const outerR = 0.8; // Full Edge Detail after 80% out
+
+                        const threshCenter = mapThresh(bgD, 20, 100);
+                        const threshEdge = mergeThresholdPixels * mapThresh(bgD, 1.5, 4.0); // Slightly coarser edges
+
+                        if (normDist <= innerR) {
+                            sizeThreshold = threshCenter;
+                        } else if (normDist >= outerR) {
+                            sizeThreshold = threshEdge;
+                        } else {
+                            // Interpolate
+                            const t = (normDist - innerR) / (outerR - innerR);
+                            const smoothT = t * t * (3 - 2 * t);
+                            sizeThreshold = (1 - smoothT) * threshCenter + smoothT * threshEdge;
+                        }
                     }
 
                     // 3. Global Modifiers
                     // Skin tones are tricky, they form gradients.
-                    if (!isFaceRegion && isSkinTone(centroids[rootIdx])) {
+                    if (minFaceDist >= 1.0 && isSkinTone(centroids[rootIdx])) {
                         // Allow a bit more merging on skin to prevent bands, but not if in Subject Zone
                         if (!isSubjectRegion) sizeThreshold *= 1.5;
+                    }
+
+                    // 4. TEXT GLOBAL OVERRIDE
+                    // If we are inside a text box, we want to force preservation based on Detail Slider.
+                    // TextDetail 100 => Threshold 1px (Preserve all).
+                    // TextDetail 0/20 => Threshold ~15px (Normal).
+                    const textD = preprocess.textDetail ?? 0;
+                    if (textD > 0 && preprocess.text && preprocess.text.length > 0) {
+                        // Check if current pixel is in any text box
+                        // Optimization: Check center of region (cx, cy)
+                        for (const box of preprocess.text) {
+                            if (cx >= box.x && cx <= box.x + box.width &&
+                                cy >= box.y && cy <= box.y + box.height) {
+
+                                // Map Slider (20-100) to Threshold (10-1)
+                                // 20 -> 10px
+                                // 100 -> 1px
+                                const t = Math.max(0, (textD - 20) / 80);
+                                const textThresh = Math.round(10 - t * 9); // 10 down to 1
+
+                                // FORCE LOWER THRESHOLD
+                                sizeThreshold = Math.min(sizeThreshold, textThresh);
+                                break;
+                            }
+                        }
                     }
 
                     if (region.length < sizeThreshold) {
@@ -249,10 +307,19 @@ export function runRefinement(
             const cx = startPx % width;
             const cy = Math.floor(startPx / width);
 
-            // A. FACE Protection
+            // A. FACE Protection (Elliptical)
             if (preprocess.faces) {
                 for (const f of preprocess.faces) {
-                    if (cx >= f.x && cx <= f.x + f.width && cy >= f.y && cy <= f.y + f.height) {
+                    const fcx = f.x + (f.width / 2);
+                    const fcy = f.y + (f.height / 2);
+                    // Standard radius
+                    const rx = (f.width / 2);
+                    const ry = (f.height / 2);
+
+                    const dx = (cx - fcx) / Math.max(1, rx);
+                    const dy = (cy - fcy) / Math.max(1, ry);
+                    // Check if inside ellipse
+                    if ((dx * dx + dy * dy) <= 1.0) {
                         // Allow tiny details in faces (eyes, pupils)
                         if (region.length > 2) isTooSmall = false;
                         isUnpaintable = false; // Always try to keep face details
@@ -366,13 +433,19 @@ export function runRefinement(
                 }
                 // Fallback: Merge into unsafe neighbor (clump them together)
                 if (!merges.has(idx)) {
-                    // PROTECT FACES from Forced Merge
+                    // PROTECT FACES from Forced Merge (Elliptical)
                     let inFace = false;
                     if (preprocess.faces) {
                         const cx = i % width;
                         const cy = Math.floor(i / width);
                         for (const f of preprocess.faces) {
-                            if (cx >= f.x && cx <= f.x + f.width && cy >= f.y && cy <= f.y + f.height) {
+                            const fcx = f.x + (f.width / 2);
+                            const fcy = f.y + (f.height / 2);
+                            const rx = f.width / 2;
+                            const ry = f.height / 2;
+                            const dx = (cx - fcx) / rx;
+                            const dy = (cy - fcy) / ry;
+                            if ((dx * dx + dy * dy) <= 1.0) {
                                 inFace = true;
                                 break;
                             }

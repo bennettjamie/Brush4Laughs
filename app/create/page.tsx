@@ -34,13 +34,14 @@ export default function CreatePage() {
     const [croppedImage, setCroppedImage] = useState<string | null>(null);
 
     // Options state
-    const [colors, setColors] = useState(20);
+    const [colors, setColors] = useState(24);
     const [complexity, setComplexity] = useState(6);
     const [colorOpacity, setColorOpacity] = useState(15);
     // Detail State
     const [faceDetail, setFaceDetail] = useState(50);
     const [bodyDetail, setBodyDetail] = useState(50);
     const [bgDetail, setBgDetail] = useState(50);
+    const [textDetail, setTextDetail] = useState(0); // Default 0 (Off/Auto)
 
     // Result state
     const [resultImage, setResultImage] = useState<string | null>(null);
@@ -139,6 +140,45 @@ export default function CreatePage() {
             if (!res.ok) throw new Error("Upload failed");
             const data = await res.json();
             if (data.url) {
+                // Auto-detect orientation
+                const img = new Image();
+                img.onload = () => {
+                    const isImgLandscape = img.naturalWidth > img.naturalHeight;
+                    // Auto-set orientation
+                    setIsLandscape(isImgLandscape);
+
+                    // Auto-update Custom dims if needed logic is same as handleOrientationChange
+                    // Check if we need to swap dimensions for current printSize
+                    let w = printSize.name === "Custom" ? customDim.width : printSize.width;
+                    let h = printSize.name === "Custom" ? customDim.height : printSize.height;
+
+                    if (printSize.category !== "Square") {
+                        // Force the "Shape" to match image
+                        if (isImgLandscape && h > w) {
+                            // Swap to match landscape
+                            if (printSize.name === "Custom") setCustomDim({ width: h, height: w });
+                            // If preset, updateAspect handles logic below
+                        } else if (!isImgLandscape && w > h) {
+                            // Swap to match portrait
+                            if (printSize.name === "Custom") setCustomDim({ width: h, height: w });
+                        }
+                    }
+
+                    // Calculate Correct Aspect for the new orientation
+                    // We must reproduce the updateAspect logic with the NEW landscape value
+                    let finalW = printSize.name === "Custom" ? (isImgLandscape ? Math.max(customDim.width, customDim.height) : Math.min(customDim.width, customDim.height)) : printSize.width;
+                    let finalH = printSize.name === "Custom" ? (isImgLandscape ? Math.min(customDim.width, customDim.height) : Math.max(customDim.width, customDim.height)) : printSize.height;
+
+                    // Standard presets might need swapping just for the aspect calculation
+                    if (printSize.category !== "Square") {
+                        if (isImgLandscape && finalH > finalW) [finalW, finalH] = [finalH, finalW];
+                        if (!isImgLandscape && finalW > finalH) [finalW, finalH] = [finalH, finalW];
+                    }
+
+                    setAspect(finalW / finalH);
+                };
+                img.src = data.url;
+
                 setImageUrl(data.url);
                 setStep("crop");
             }
@@ -189,7 +229,12 @@ export default function CreatePage() {
                     imageUrl: croppedImage,
                     colors,
                     complexity,
-                    customDim: { width: targetW, height: targetH }
+                    customDim: { width: targetW, height: targetH },
+                    faceDetail,
+                    bodyDetail,
+                    bgDetail,
+                    textDetail, // Pass new param
+                    bgOpacity: colorOpacity / 100
                 })
             });
             if (!res.ok) throw new Error("Processing failed");
@@ -209,9 +254,65 @@ export default function CreatePage() {
     };
 
     const [downloadingType, setDownloadingType] = useState<"canvas" | "guide" | "canvas-reverse" | null>(null);
+    const [guideBlob, setGuideBlob] = useState<Blob | null>(null);
+
+    // BACKGROUND GENERATION: Prefetch Guide PDF
+    // We only prefetch if we have results. If opacity/unit changes, we should ideally re-fetch or just invalidate.
+    // For now, let's prefetch on initial load of preview. Debounce could work for updates.
+    useEffect(() => {
+        if (step === "preview" && resultImage && outlineImage) {
+            // Invalidate current cache immediately so we don't serve stale content if user clicks fast
+            setGuideBlob(null);
+
+            // Define formatting variables locally to match the ones used in download (or use current state)
+            const targetW = printSize.name === "Custom" ? customDim.width : printSize.width;
+            const targetH = printSize.name === "Custom" ? customDim.height : printSize.height;
+
+            const prefetchController = new AbortController();
+
+            console.log("[Prefetch] Starting background Guide generation...");
+            fetch("/api/pdf", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    outlineUrl: outlineImage,
+                    resultUrl: resultImage,
+                    originalUrl: croppedImage,
+                    palette,
+                    labels,
+                    dimensions,
+                    unit,
+                    printSize,
+                    customDim,
+                    pdfDimensions: { width: targetW, height: targetH },
+                    opacity, // Current opacity
+                    type: "guide"
+                }),
+                signal: prefetchController.signal
+            })
+                .then(res => {
+                    if (res.ok) return res.blob();
+                    throw new Error("Prefetch failed");
+                })
+                .then(blob => {
+                    console.log("[Prefetch] Guide ready.");
+                    setGuideBlob(blob);
+                })
+                .catch(e => {
+                    if (e.name !== 'AbortError') console.warn("[Prefetch] Failed behavior", e);
+                });
+
+            return () => prefetchController.abort();
+        }
+    }, [step, resultImage, outlineImage, opacity, unit, printSize, customDim]); // Re-run if these change? Yes, but maybe debounce it?
+    // Note: React's strict mode might double-fetch in dev, that's okay.
+    // Ideally we debounce the opacity slider so we don't spam the server.
+    // But for now, this basic implementation fulfills the requirement "start processing... after final page loads".
+
 
     const handleDownload = async (type: "canvas" | "guide" | "canvas-reverse") => {
         setDownloadingType(type);
+
         let finalPrintSize = printSize;
         if (printSize.name === "Custom") {
             finalPrintSize = { ...printSize, width: customDim.width, height: customDim.height };
@@ -260,6 +361,21 @@ export default function CreatePage() {
 
         // SERVER-SIDE GENERATION FOR GUIDE (Fallback)
         try {
+            // Check cache first
+            if (type === "guide" && guideBlob) {
+                console.log("[Download] Using cached Guide blob.");
+                const url = window.URL.createObjectURL(guideBlob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "Brush4Laughs-Guide.pdf";
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+                setDownloadingType(null);
+                return;
+            }
+
             fetch("/api/pdf", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -283,6 +399,9 @@ export default function CreatePage() {
                     return res.blob();
                 })
                 .then(blob => {
+                    // Update cache too?
+                    if (type === "guide") setGuideBlob(blob);
+
                     const url = window.URL.createObjectURL(blob);
                     const a = document.createElement("a");
                     a.href = url;
@@ -402,9 +521,11 @@ export default function CreatePage() {
                             faceDetail={faceDetail}
                             bodyDetail={bodyDetail}
                             bgDetail={bgDetail}
+                            textDetail={textDetail} // Pass prop
                             setFaceDetail={setFaceDetail}
                             setBodyDetail={setBodyDetail}
                             setBgDetail={setBgDetail}
+                            setTextDetail={setTextDetail} // Pass prop
                             onGenerate={generatePreview}
                             onBack={() => setStep("crop")}
                         />

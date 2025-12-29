@@ -88,26 +88,62 @@ export async function enhanceFaces(
 
         // Adaptive Enhancement (Toned Down)
         if (contrastRange < 80) {
-            // LOW CONTRAST (Kid)
-            // Still force stretch, but slightly less aggressive sharpen
+            // LOW CONTRAST
             pipe = pipe.normalise();
-        } else {
-            // HIGH CONTRAST (Dad)
-            // NATIVE: Do nothing. Trust the input image.
-            // This is the "Down a notch" request.
-            // Previous: pipe = pipe.modulate({ brightness: 1.02, saturation: 1.1 });
         }
 
-        // Sharpen (Reduced from 2 to 1.5 to be less "scratchy")
+        // Sharpen
         const processedFace = await pipe
             .sharpen({ sigma: 1.5, m1: 0, m2: 3, x1: 2, y2: 10, y3: 20 })
             .resize(w, h, { kernel: 'lanczos3' })
+            .raw()
+            .toBuffer();
+
+        // 5. FEATHERED BLENDING (Ellipse Mask)
+        // Create an Alpha Mask that is 255 in center, fading to 0 at corners
+        // We do this manually to ensure organic blending
+        const maskBuffer = Buffer.alloc(w * h);
+        const cx = w / 2;
+        const cy = h / 2;
+        const rx = Math.max(1, w / 2);
+        const ry = Math.max(1, h / 2);
+
+        for (let my = 0; my < h; my++) {
+            for (let mx = 0; mx < w; mx++) {
+                // Normalized distance
+                const dx = (mx - cx) / rx;
+                const dy = (my - cy) / ry;
+                const distSq = dx * dx + dy * dy;
+
+                let alpha = 255;
+                if (distSq > 1.0) {
+                    alpha = 0; // Outside ellipse
+                } else if (distSq > 0.6) {
+                    // Feather zone (0.6 to 1.0) ~= last 20% of radius
+                    // Map 0.6 -> 255, 1.0 -> 0
+                    const t = (distSq - 0.6) / 0.4; // 0 to 1
+                    // Smoothstep-ish
+                    alpha = Math.floor(255 * (1 - t));
+                }
+                maskBuffer[my * w + mx] = alpha;
+            }
+        }
+
+        // Apply Mask using Composition (dest-in)
+        // This keeps the face (destination) where the mask (source) is opaque
+        const maskedFace = await sharp(processedFace, { raw: { width: w, height: h, channels: 4 } })
+            .composite([{
+                input: maskBuffer,
+                raw: { width: w, height: h, channels: 1 },
+                blend: 'dest-in'
+            }])
+            .png() // Encode as PNG so mainImage.composite can auto-detect it
             .toBuffer();
 
         composites.push({
-            input: processedFace,
+            input: maskedFace,
             top: y,
-            left: x
+            left: x,
         });
     }
 

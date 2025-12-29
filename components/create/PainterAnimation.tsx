@@ -17,6 +17,7 @@ export function PainterAnimation({ progress }: { progress: number }) {
                     fill
                     className="object-contain"
                     priority
+                    sizes="(max-width: 768px) 100vw, 600px"
                 />
             </div>
 
@@ -35,6 +36,7 @@ export function PainterAnimation({ progress }: { progress: number }) {
                         fill
                         className="object-contain"
                         priority
+                        sizes="(max-width: 768px) 100vw, 600px"
                     />
                 </div>
             </motion.div>
@@ -66,6 +68,7 @@ export function PainterAnimation({ progress }: { progress: number }) {
                         alt="Painter Brush"
                         fill
                         className="object-contain drop-shadow-2xl"
+                        sizes="100px"
                     />
                 </div>
             </motion.div>

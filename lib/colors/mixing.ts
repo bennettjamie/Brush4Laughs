@@ -65,7 +65,7 @@ export function getAcrylicRecipe(targetHex: string): string {
     }
 
     if (bestSingleDist < 15) {
-        return `Use standard '${bestSingleName}'`;
+        return `Use standard [${bestSingleName}]`;
     }
 
     // 2. Check for 2-Color Mix (Simple Ratios: 1:1, 2:1, 3:1, 4:1)
@@ -73,7 +73,7 @@ export function getAcrylicRecipe(targetHex: string): string {
     // Brute force is okay for 24 colors * 24 colors * 4 ratios = ~2300 checks (negligible)
 
     let bestMixDist = bestSingleDist;
-    let bestMixStr = `Use standard '${bestSingleName}' (Closest)`;
+    let bestMixStr = `Use standard [${bestSingleName}] (Closest)`;
 
     const ratios = [0.5, 0.66, 0.75, 0.8]; // 1:1, 2:1, 3:1, 4:1
     const ratioNames = ["1:1", "2:1", "3:1", "4:1"];
@@ -91,7 +91,7 @@ export function getAcrylicRecipe(targetHex: string): string {
                 const d1 = colorDist(targetRGB, mix1);
                 if (d1 < bestMixDist) {
                     bestMixDist = d1;
-                    bestMixStr = `Mix '${c1.name}' & '${c2.name}' (${ratioNames[r]})`;
+                    bestMixStr = `Mix [${c1.name}] & [${c2.name}] (${ratioNames[r]})`;
                 }
 
                 // Try c2 dominant (skip 1:1 since it's symmetric)
@@ -100,7 +100,7 @@ export function getAcrylicRecipe(targetHex: string): string {
                     const d2 = colorDist(targetRGB, mix2);
                     if (d2 < bestMixDist) {
                         bestMixDist = d2;
-                        bestMixStr = `Mix '${c2.name}' & '${c1.name}' (${ratioNames[r]})`;
+                        bestMixStr = `Mix [${c2.name}] & [${c1.name}] (${ratioNames[r]})`;
                     }
                 }
             }
@@ -108,4 +108,29 @@ export function getAcrylicRecipe(targetHex: string): string {
     }
 
     return bestMixStr;
+}
+
+export function getShoppingList(paletteHexes: string[]): string[] {
+    const needed = new Set<string>();
+
+    for (const hex of paletteHexes) {
+        const recipe = getAcrylicRecipe(hex);
+        // Robust Parsing: Use brackets to handle names with apostrophes (e.g. "Hooker's Green")
+        if (recipe.includes("Use standard")) {
+            const match = recipe.match(/\[([^\]]+)\]/);
+            if (match) needed.add(match[1]);
+        } else if (recipe.includes("Mix")) {
+            const matches = recipe.matchAll(/\[([^\]]+)\]/g);
+            for (const m of matches) {
+                needed.add(m[1]);
+            }
+        }
+    }
+
+    return Array.from(needed).sort();
+}
+
+export function getStandardHex(name: string): string {
+    const found = STANDARD_ACRYLIC_24.find(p => p.name === name);
+    return found ? found.hex : "#CCCCCC"; // Default gray if not found
 }

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Crop as CropIcon, ArrowRight, Loader2 } from "lucide-react";
 import Cropper, { Point, Area } from "react-easy-crop";
 import { cn } from "@/lib/utils";
@@ -45,6 +46,7 @@ export function CropStep({
     onBack,
     onNext,
 }: CropStepProps) {
+    const [localPixels, setLocalPixels] = useState<Area | null>(null);
 
     // Helper to format size label
     const getSizeLabel = (size: PrintSize) => {
@@ -176,9 +178,42 @@ export function CropStep({
                     zoom={zoom}
                     aspect={aspect}
                     onCropChange={onCropChange}
-                    onCropComplete={onCropComplete}
+                    onCropComplete={(a, p) => {
+                        onCropComplete(a, p);
+                        setLocalPixels(p);
+                    }}
                     onZoomChange={onZoomChange}
                 />
+
+                {/* Warnings Layer */}
+                <div className="absolute top-4 left-4 right-4 flex flex-col gap-2 pointer-events-none">
+                    {printSize.name === "Custom" && (
+                        <div className="bg-amber-500/90 text-white text-xs font-bold px-4 py-2 rounded-xl shadow-lg backdrop-blur-md self-start border border-amber-400/50 animate-in fade-in slide-in-from-top-2">
+                            ⚠️ Non-standard dimensions may require custom framing.
+                        </div>
+                    )}
+
+                    {(() => {
+                        if (!localPixels) return null;
+                        // Calculate DPI
+                        const wInches = printSize.name === "Custom" ? (sizeUnit === "cm" ? customDim.width / 2.54 : customDim.width) : printSize.width;
+                        const hInches = printSize.name === "Custom" ? (sizeUnit === "cm" ? customDim.height / 2.54 : customDim.height) : printSize.height;
+
+                        // Use the larger dimension to check "minimum quality" for the print
+                        const dpiW = localPixels.width / wInches;
+                        const dpiH = localPixels.height / hInches;
+                        const minDpi = Math.min(dpiW, dpiH);
+
+                        if (minDpi < 100) {
+                            return (
+                                <div className="bg-rose-500/90 text-white text-xs font-bold px-4 py-2 rounded-xl shadow-lg backdrop-blur-md self-start border border-rose-400/50 animate-in fade-in slide-in-from-top-2">
+                                    🛑 Low Resolution ({Math.round(minDpi)} DPI). Print may look blurry.
+                                </div>
+                            );
+                        }
+                        return null;
+                    })()}
+                </div>
             </div>
 
             <div className="shrink-0 flex items-center gap-6 px-4 pb-2">

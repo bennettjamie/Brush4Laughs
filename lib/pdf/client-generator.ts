@@ -125,31 +125,53 @@ export async function generateClientCanvasPDF(
         }
     }
 
-    // STANDARD VECTOR PATH (Unchanged)
+    // STANDARD PATH (Optimized: JPEG Background + Vector Labels)
     const doc = new jsPDF({
         orientation,
         unit: "in",
         format: [targetW, targetH]
     });
 
-    // 1. Background (Result Image)
-    if (opacity > 0) {
-        try {
-            const img = await loadBrowserImage(resultUrl);
-            if (GState) {
-                doc.saveGraphicsState();
-                doc.setGState(new GState({ opacity: opacity / 100 }));
-                doc.addImage(img, "PNG", 0, 0, targetW, targetH);
-                doc.restoreGraphicsState();
-            }
-        } catch (e) { console.warn("Background load failed", e); }
-    }
+    // Composite Images to JPEG to save space
+    // 1. Setup High-Res Canvas (300 DPI)
+    const dpi = 300;
+    const widthPx = targetW * dpi;
+    const heightPx = targetH * dpi;
 
-    // 2. Outline
-    try {
-        const img = await loadBrowserImage(outlineUrl);
-        doc.addImage(img, "PNG", 0, 0, targetW, targetH);
-    } catch (e) { console.error("Outline load failed", e); }
+    const canvas = document.createElement("canvas");
+    canvas.width = widthPx;
+    canvas.height = heightPx;
+    const ctx = canvas.getContext("2d");
+
+    if (ctx) {
+        // White Background
+        ctx.fillStyle = "white";
+        ctx.fillRect(0, 0, widthPx, heightPx);
+
+        // Draw Result (Background Color)
+        if (opacity > 0) {
+            try {
+                const bgImg = await loadBrowserImage(resultUrl);
+                ctx.globalAlpha = opacity / 100;
+                ctx.drawImage(bgImg, 0, 0, widthPx, heightPx);
+                ctx.globalAlpha = 1.0;
+            } catch (e) {
+                console.warn("Background load failed", e);
+            }
+        }
+
+        // Draw Outline
+        try {
+            const outImg = await loadBrowserImage(outlineUrl);
+            ctx.drawImage(outImg, 0, 0, widthPx, heightPx);
+        } catch (e) {
+            console.error("Outline load failed", e);
+        }
+
+        // Export as JPEG
+        const imgData = canvas.toDataURL("image/jpeg", 0.75); // 75% quality is plenty for canvas texture
+        doc.addImage(imgData, "JPEG", 0, 0, targetW, targetH);
+    }
 
     // 3. Labels
     const scaleX = targetW / dimension.width;

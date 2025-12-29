@@ -35,6 +35,7 @@ export async function runPreprocess(options: ProcessingOptions): Promise<Preproc
         height: info.height,
         faceDetail: options.faceDetail,
         bodyDetail: options.bodyDetail,
-        bgDetail: options.bgDetail
+        bgDetail: options.bgDetail,
+        textDetail: options.textDetail
     };
 }

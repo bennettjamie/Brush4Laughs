@@ -1,0 +1,170 @@
+[2025-12-26T23:11:12.943Z] Request received
+[2025-12-26T23:11:12.962Z] Body parsed. Type: guide
+[2025-12-26T23:22:55.875Z] Request received
+[2025-12-26T23:22:55.896Z] Body parsed. Type: guide
+[Assets] Optimizing: /uploads/cb9f209c-6b41-4758-9bd4-d6d7a88efd71.png
+[Assets] Optimizing: /uploads/processed-4b3e4bdb-5ec3-46e4-9be4-b07caa03f943.png
+[Assets] Resizing /uploads/processed-4b3e4bdb-5ec3-46e4-9be4-b07caa03f943.png...
+[2025-12-26T23:31:49.903Z] Request received
+[2025-12-26T23:31:49.935Z] Body parsed. Type: guide
+[Assets] Optimizing: /uploads/bebb2147-4ad3-40fd-bcc0-373fb7b36643.png
+[Assets] Optimizing: /uploads/processed-d9c37b0b-2a91-4da1-b263-3ff150a6cbfc.png
+[Assets] TIMEOUT optimizing /uploads/bebb2147-4ad3-40fd-bcc0-373fb7b36643.png. Using raw.
+[Assets] Resizing /uploads/processed-d9c37b0b-2a91-4da1-b263-3ff150a6cbfc.png... (timeout 5s)
+[Assets] Optimization success: /uploads/processed-d9c37b0b-2a91-4da1-b263-3ff150a6cbfc.png
+[2025-12-27T08:36:39.707Z] Request received
+[2025-12-27T08:36:39.742Z] Body parsed. Type: guide
+[Assets] Optimizing: /uploads/5eac3a68-d49a-4b31-92de-389dfbeef282.png to jpeg
+[Assets] Processing /uploads/5eac3a68-d49a-4b31-92de-389dfbeef282.png... (timeout 5s)
+[Assets] Optimization success: /uploads/5eac3a68-d49a-4b31-92de-389dfbeef282.png
+[Assets] Optimizing: /uploads/processed-0895ddde-ab4b-4363-913f-c67fa0b54a22.png to jpeg
+[Assets] Processing /uploads/processed-0895ddde-ab4b-4363-913f-c67fa0b54a22.png... (timeout 5s)
+[Assets] Optimization success: /uploads/processed-0895ddde-ab4b-4363-913f-c67fa0b54a22.png
+[Assets] TIMEOUT optimizing /uploads/5eac3a68-d49a-4b31-92de-389dfbeef282.png. Using placeholder.
+[Assets] TIMEOUT optimizing /uploads/processed-0895ddde-ab4b-4363-913f-c67fa0b54a22.png. Using placeholder.
+[2025-12-27T16:59:19.354Z] Request received
+[2025-12-27T16:59:19.370Z] Body parsed. Type: guide
+[Assets] Optimizing: /uploads/07766d6d-a1c2-41f1-8ccc-46e4ced9fd7b.png to jpeg
+[Assets] Processing /uploads/07766d6d-a1c2-41f1-8ccc-46e4ced9fd7b.png... (timeout 5s)
+[Assets] Optimization success: /uploads/07766d6d-a1c2-41f1-8ccc-46e4ced9fd7b.png
+[Assets] Optimizing: /uploads/processed-e48adc2b-d87b-48e4-ba5e-fea276dbeed6.png to jpeg
+[Assets] Processing /uploads/processed-e48adc2b-d87b-48e4-ba5e-fea276dbeed6.png... (timeout 5s)
+[Assets] Optimization success: /uploads/processed-e48adc2b-d87b-48e4-ba5e-fea276dbeed6.png
+[Assets] TIMEOUT optimizing /uploads/07766d6d-a1c2-41f1-8ccc-46e4ced9fd7b.png. Using placeholder.
+[Assets] TIMEOUT optimizing /uploads/processed-e48adc2b-d87b-48e4-ba5e-fea276dbeed6.png. Using placeholder.
+[2025-12-27T17:08:04.523Z] Request received
+[2025-12-27T17:08:04.536Z] Body parsed. Type: guide
+[Assets] Optimizing: /uploads/07766d6d-a1c2-41f1-8ccc-46e4ced9fd7b.png to jpeg
+[Assets] Processing /uploads/07766d6d-a1c2-41f1-8ccc-46e4ced9fd7b.png... (timeout 5s)
+[Assets] Optimization success: /uploads/07766d6d-a1c2-41f1-8ccc-46e4ced9fd7b.png
+[Assets] Optimizing: /uploads/processed-e48adc2b-d87b-48e4-ba5e-fea276dbeed6.png to jpeg
+[Assets] Processing /uploads/processed-e48adc2b-d87b-48e4-ba5e-fea276dbeed6.png... (timeout 5s)
+[Assets] Optimization success: /uploads/processed-e48adc2b-d87b-48e4-ba5e-fea276dbeed6.png
+[Assets] TIMEOUT optimizing /uploads/07766d6d-a1c2-41f1-8ccc-46e4ced9fd7b.png. Using placeholder.
+[Assets] TIMEOUT optimizing /uploads/processed-e48adc2b-d87b-48e4-ba5e-fea276dbeed6.png. Using placeholder.
+[2025-12-27T17:14:57.444Z] Request received
+[2025-12-27T17:14:57.464Z] Body parsed. Type: guide
+[Assets] Optimizing: /uploads/241fd366-f44a-443d-8869-4902221460cc.png to jpeg
+[Assets] Processing /uploads/241fd366-f44a-443d-8869-4902221460cc.png... (timeout 5s)
+[Assets] Optimization success: /uploads/241fd366-f44a-443d-8869-4902221460cc.png
+[Assets] Optimizing: /uploads/processed-9049685c-e777-4727-a8b2-44bd16e25429.png to jpeg
+[Assets] Processing /uploads/processed-9049685c-e777-4727-a8b2-44bd16e25429.png... (timeout 5s)
+[Assets] Optimization success: /uploads/processed-9049685c-e777-4727-a8b2-44bd16e25429.png
+[Assets] Optimizing: /uploads/outline-9049685c-e777-4727-a8b2-44bd16e25429.png to jpeg
+[Assets] Processing /uploads/outline-9049685c-e777-4727-a8b2-44bd16e25429.png... (timeout 5s)
+[Assets] Optimization success: /uploads/outline-9049685c-e777-4727-a8b2-44bd16e25429.png
+[Assets] TIMEOUT optimizing /uploads/241fd366-f44a-443d-8869-4902221460cc.png. Using placeholder.
+[Assets] TIMEOUT optimizing /uploads/processed-9049685c-e777-4727-a8b2-44bd16e25429.png. Using placeholder.
+[Assets] TIMEOUT optimizing /uploads/outline-9049685c-e777-4727-a8b2-44bd16e25429.png. Using placeholder.
+[2025-12-28T00:36:34.540Z] Request received
+[2025-12-28T00:36:34.559Z] Body parsed. Type: guide
+[Assets] Optimizing: /uploads/99afb517-42e2-489e-bc56-7f2b1143792d.png to jpeg
+[Assets] Processing /uploads/99afb517-42e2-489e-bc56-7f2b1143792d.png... (timeout 5s)
+[Assets] Optimization success: /uploads/99afb517-42e2-489e-bc56-7f2b1143792d.png
+[Assets] Optimizing: /uploads/processed-fc88a1ca-5658-4f36-8ebc-566d60251306.png to jpeg
+[Assets] Processing /uploads/processed-fc88a1ca-5658-4f36-8ebc-566d60251306.png... (timeout 5s)
+[Assets] Optimization success: /uploads/processed-fc88a1ca-5658-4f36-8ebc-566d60251306.png
+[Assets] Optimizing: /uploads/outline-fc88a1ca-5658-4f36-8ebc-566d60251306.png to jpeg
+[Assets] Processing /uploads/outline-fc88a1ca-5658-4f36-8ebc-566d60251306.png... (timeout 5s)
+[Assets] Optimization success: /uploads/outline-fc88a1ca-5658-4f36-8ebc-566d60251306.png
+[Assets] TIMEOUT optimizing /uploads/99afb517-42e2-489e-bc56-7f2b1143792d.png. Using placeholder.
+[Assets] TIMEOUT optimizing /uploads/processed-fc88a1ca-5658-4f36-8ebc-566d60251306.png. Using placeholder.
+[Assets] TIMEOUT optimizing /uploads/outline-fc88a1ca-5658-4f36-8ebc-566d60251306.png. Using placeholder.
+[2025-12-28T00:59:14.642Z] Request received
+[2025-12-28T00:59:14.671Z] Body parsed. Type: guide
+[Assets] Optimizing: /uploads/a8e3d281-6b30-4937-9684-d0797f160968.png to jpeg
+[Assets] Processing /uploads/a8e3d281-6b30-4937-9684-d0797f160968.png... (timeout 5s)
+[Assets] Optimization success: /uploads/a8e3d281-6b30-4937-9684-d0797f160968.png
+[Assets] Optimizing: /uploads/processed-94ac9064-1190-484d-9cbc-fadc8d91f674.png to jpeg
+[Assets] Processing /uploads/processed-94ac9064-1190-484d-9cbc-fadc8d91f674.png... (timeout 5s)
+[Assets] Optimization success: /uploads/processed-94ac9064-1190-484d-9cbc-fadc8d91f674.png
+[Assets] Optimizing: /uploads/outline-94ac9064-1190-484d-9cbc-fadc8d91f674.png to jpeg
+[Assets] Processing /uploads/outline-94ac9064-1190-484d-9cbc-fadc8d91f674.png... (timeout 5s)
+[Assets] Optimization success: /uploads/outline-94ac9064-1190-484d-9cbc-fadc8d91f674.png
+[Assets] TIMEOUT optimizing /uploads/a8e3d281-6b30-4937-9684-d0797f160968.png. Using placeholder.
+[Assets] TIMEOUT optimizing /uploads/processed-94ac9064-1190-484d-9cbc-fadc8d91f674.png. Using placeholder.
+[Assets] TIMEOUT optimizing /uploads/outline-94ac9064-1190-484d-9cbc-fadc8d91f674.png. Using placeholder.
+[2025-12-28T02:44:23.254Z] Request received
+[2025-12-28T02:44:23.280Z] Body parsed. Type: guide
+[Assets] Optimizing: /uploads/320749f9-7686-40c1-9683-415b51bae6cf.png to jpeg
+[Assets] Processing /uploads/320749f9-7686-40c1-9683-415b51bae6cf.png... (timeout 5s)
+[Assets] Optimization success: /uploads/320749f9-7686-40c1-9683-415b51bae6cf.png
+[Assets] Optimizing: /uploads/processed-f6920cfe-4ce8-4fde-a595-c05b26ea75e8.png to jpeg
+[Assets] Processing /uploads/processed-f6920cfe-4ce8-4fde-a595-c05b26ea75e8.png... (timeout 5s)
+[Assets] Optimization success: /uploads/processed-f6920cfe-4ce8-4fde-a595-c05b26ea75e8.png
+[Assets] Optimizing: /uploads/outline-f6920cfe-4ce8-4fde-a595-c05b26ea75e8.png to jpeg
+[Assets] Processing /uploads/outline-f6920cfe-4ce8-4fde-a595-c05b26ea75e8.png... (timeout 5s)
+[Assets] Optimization success: /uploads/outline-f6920cfe-4ce8-4fde-a595-c05b26ea75e8.png
+[Assets] TIMEOUT optimizing /uploads/320749f9-7686-40c1-9683-415b51bae6cf.png. Using placeholder.
+[Assets] TIMEOUT optimizing /uploads/processed-f6920cfe-4ce8-4fde-a595-c05b26ea75e8.png. Using placeholder.
+[Assets] TIMEOUT optimizing /uploads/outline-f6920cfe-4ce8-4fde-a595-c05b26ea75e8.png. Using placeholder.
+[2025-12-28T02:44:51.352Z] Request received
+[2025-12-28T02:44:51.375Z] Body parsed. Type: guide
+[Assets] Optimizing: /uploads/320749f9-7686-40c1-9683-415b51bae6cf.png to jpeg
+[Assets] Processing /uploads/320749f9-7686-40c1-9683-415b51bae6cf.png... (timeout 5s)
+[Assets] Optimization success: /uploads/320749f9-7686-40c1-9683-415b51bae6cf.png
+[Assets] Optimizing: /uploads/processed-f6920cfe-4ce8-4fde-a595-c05b26ea75e8.png to jpeg
+[Assets] Processing /uploads/processed-f6920cfe-4ce8-4fde-a595-c05b26ea75e8.png... (timeout 5s)
+[Assets] Optimization success: /uploads/processed-f6920cfe-4ce8-4fde-a595-c05b26ea75e8.png
+[Assets] Optimizing: /uploads/outline-f6920cfe-4ce8-4fde-a595-c05b26ea75e8.png to jpeg
+[Assets] Processing /uploads/outline-f6920cfe-4ce8-4fde-a595-c05b26ea75e8.png... (timeout 5s)
+[Assets] Optimization success: /uploads/outline-f6920cfe-4ce8-4fde-a595-c05b26ea75e8.png
+[Assets] TIMEOUT optimizing /uploads/320749f9-7686-40c1-9683-415b51bae6cf.png. Using placeholder.
+[Assets] TIMEOUT optimizing /uploads/processed-f6920cfe-4ce8-4fde-a595-c05b26ea75e8.png. Using placeholder.
+[Assets] TIMEOUT optimizing /uploads/outline-f6920cfe-4ce8-4fde-a595-c05b26ea75e8.png. Using placeholder.
+[2025-12-28T20:14:33.973Z] Request received
+[2025-12-28T20:14:34.163Z] Body parsed. Type: guide
+[Assets] Optimizing: /uploads/9d08a3a1-f0da-499f-ad5d-08e34d8781c9.png to jpeg
+[Assets] Processing /uploads/9d08a3a1-f0da-499f-ad5d-08e34d8781c9.png... (timeout 5s)
+[Assets] Optimization success: /uploads/9d08a3a1-f0da-499f-ad5d-08e34d8781c9.png
+[Assets] Optimizing: /uploads/processed-ced707ad-7b34-4308-9752-9b4432e085c6.png to jpeg
+[Assets] Processing /uploads/processed-ced707ad-7b34-4308-9752-9b4432e085c6.png... (timeout 5s)
+[Assets] Optimization success: /uploads/processed-ced707ad-7b34-4308-9752-9b4432e085c6.png
+[Assets] Optimizing: /uploads/outline-ced707ad-7b34-4308-9752-9b4432e085c6.png to jpeg
+[Assets] Processing /uploads/outline-ced707ad-7b34-4308-9752-9b4432e085c6.png... (timeout 5s)
+[Assets] Optimization success: /uploads/outline-ced707ad-7b34-4308-9752-9b4432e085c6.png
+[Assets] TIMEOUT optimizing /uploads/9d08a3a1-f0da-499f-ad5d-08e34d8781c9.png. Using placeholder.
+[Assets] TIMEOUT optimizing /uploads/processed-ced707ad-7b34-4308-9752-9b4432e085c6.png. Using placeholder.
+[Assets] TIMEOUT optimizing /uploads/outline-ced707ad-7b34-4308-9752-9b4432e085c6.png. Using placeholder.
+[2025-12-28T21:46:37.687Z] Request received
+[2025-12-28T21:46:37.713Z] Body parsed. Type: guide
+[Assets] Optimizing: /uploads/d145f08b-f300-45b8-b953-e3c642e31185.png to jpeg
+[Assets] Processing /uploads/d145f08b-f300-45b8-b953-e3c642e31185.png... (timeout 5s)
+[Assets] Optimization success: /uploads/d145f08b-f300-45b8-b953-e3c642e31185.png
+[Assets] Optimizing: /uploads/processed-1a2a1799-794c-4e7f-a597-b757b0527f17.png to jpeg
+[Assets] Processing /uploads/processed-1a2a1799-794c-4e7f-a597-b757b0527f17.png... (timeout 5s)
+[Assets] Optimization success: /uploads/processed-1a2a1799-794c-4e7f-a597-b757b0527f17.png
+[Assets] Optimizing: /uploads/outline-1a2a1799-794c-4e7f-a597-b757b0527f17.png to jpeg
+[Assets] Processing /uploads/outline-1a2a1799-794c-4e7f-a597-b757b0527f17.png... (timeout 5s)
+[Assets] Optimization success: /uploads/outline-1a2a1799-794c-4e7f-a597-b757b0527f17.png
+[Assets] TIMEOUT optimizing /uploads/d145f08b-f300-45b8-b953-e3c642e31185.png. Using placeholder.
+[Assets] TIMEOUT optimizing /uploads/processed-1a2a1799-794c-4e7f-a597-b757b0527f17.png. Using placeholder.
+[Assets] TIMEOUT optimizing /uploads/outline-1a2a1799-794c-4e7f-a597-b757b0527f17.png. Using placeholder.
+[2025-12-28T22:08:10.420Z] Request received
+[2025-12-28T22:08:10.494Z] Body parsed. Type: guide
+[Assets] Optimizing: /uploads/812d79d7-481b-4436-ac30-2fa614217b08.png to jpeg
+[Assets] Processing /uploads/812d79d7-481b-4436-ac30-2fa614217b08.png... (timeout 5s)
+[Assets] Optimization success: /uploads/812d79d7-481b-4436-ac30-2fa614217b08.png
+[Assets] Optimizing: /uploads/processed-05dfb2bf-d7af-43ff-be10-5e01bc7694b5.png to jpeg
+[Assets] Processing /uploads/processed-05dfb2bf-d7af-43ff-be10-5e01bc7694b5.png... (timeout 5s)
+[Assets] Optimization success: /uploads/processed-05dfb2bf-d7af-43ff-be10-5e01bc7694b5.png
+[Assets] Optimizing: /uploads/outline-05dfb2bf-d7af-43ff-be10-5e01bc7694b5.png to jpeg
+[Assets] Processing /uploads/outline-05dfb2bf-d7af-43ff-be10-5e01bc7694b5.png... (timeout 5s)
+[Assets] Optimization success: /uploads/outline-05dfb2bf-d7af-43ff-be10-5e01bc7694b5.png
+[Assets] TIMEOUT optimizing /uploads/812d79d7-481b-4436-ac30-2fa614217b08.png. Using placeholder.
+[Assets] TIMEOUT optimizing /uploads/processed-05dfb2bf-d7af-43ff-be10-5e01bc7694b5.png. Using placeholder.
+[Assets] TIMEOUT optimizing /uploads/outline-05dfb2bf-d7af-43ff-be10-5e01bc7694b5.png. Using placeholder.
+[2025-12-29T00:17:49.368Z] Request received
+[2025-12-29T00:17:49.389Z] Body parsed. Type: guide
+[Assets] Optimizing: /uploads/68b9de6c-9a5e-4613-8c82-1b34971327b0.png to jpeg
+[Assets] Processing /uploads/68b9de6c-9a5e-4613-8c82-1b34971327b0.png... (timeout 5s)
+[Assets] Optimization success: /uploads/68b9de6c-9a5e-4613-8c82-1b34971327b0.png
+[Assets] Optimizing: /uploads/processed-8b92bd9a-509d-4fee-b63c-e20e4f1b3d39.png to jpeg
+[Assets] Processing /uploads/processed-8b92bd9a-509d-4fee-b63c-e20e4f1b3d39.png... (timeout 5s)
+[Assets] Optimization success: /uploads/processed-8b92bd9a-509d-4fee-b63c-e20e4f1b3d39.png
+[Assets] Optimizing: /uploads/outline-8b92bd9a-509d-4fee-b63c-e20e4f1b3d39.png to jpeg
+[Assets] Processing /uploads/outline-8b92bd9a-509d-4fee-b63c-e20e4f1b3d39.png... (timeout 5s)
+[Assets] Optimization success: /uploads/outline-8b92bd9a-509d-4fee-b63c-e20e4f1b3d39.png
+[Assets] TIMEOUT optimizing /uploads/68b9de6c-9a5e-4613-8c82-1b34971327b0.png. Using placeholder.
+[Assets] TIMEOUT optimizing /uploads/processed-8b92bd9a-509d-4fee-b63c-e20e4f1b3d39.png. Using placeholder.
+[Assets] TIMEOUT optimizing /uploads/outline-8b92bd9a-509d-4fee-b63c-e20e4f1b3d39.png. Using placeholder.

@@ -1,16 +1,18 @@
 import { jsPDF, GState } from "jspdf";
 import { loadImage, loadOptimizedImage } from "./assets";
-import { getAcrylicRecipe } from "../colors/mixing"; // Import Mixing Logic
+import { getAcrylicRecipe, getShoppingList, getStandardHex } from "../colors/mixing"; // Import Mixing Logic
 
 interface GuideOptions {
     originalUrl?: string; // Optional path to original Uploaded image
     posterizedUrl: string; // The "Painted Result"
+    outlineUrl: string; // The "Canvas Lines"
     palette: { color: string; name: string; amount: number; percentage: number }[];
     unit?: "ml" | "oz";
+    opacity: number;
 }
 
 export async function generateGuidePDF(options: GuideOptions): Promise<jsPDF> {
-    const { originalUrl, posterizedUrl, palette, unit = "ml" } = options;
+    const { originalUrl, posterizedUrl, outlineUrl, palette, unit = "ml", opacity } = options;
 
     const docGuide = new jsPDF({
         unit: "mm",
@@ -48,37 +50,36 @@ export async function generateGuidePDF(options: GuideOptions): Promise<jsPDF> {
         d.text(footerText, w / 2, h - 10, { align: "center", charSpace: 1 });
     };
 
-    // PAGE 1: Professional Studio Orchestration (Portrait)
+    // PAGE 1: Intro & Checklist (Portrait)
     const guideW = docGuide.internal.pageSize.getWidth();
     addGuideBranding(docGuide, false);
 
     // Title Section
-    docGuide.setFontSize(32);
+    docGuide.setFontSize(28); // Slightly friendlier size
     docGuide.setTextColor(20, 20, 20);
     docGuide.setFont("helvetica", "bold");
-    docGuide.text("Studio Guide", guideW / 2, 50, { align: "center" });
+    docGuide.text("Let's Paint Some Memories!", guideW / 2, 50, { align: "center" });
 
     docGuide.setFontSize(10);
     docGuide.setTextColor(99, 102, 241); // Indigo 400
-    docGuide.text("MASTERPIECE CREATION KIT", guideW / 2, 58, { align: "center", charSpace: 2 });
+    docGuide.text("YOUR CUSTOM PAINTING KIT", guideW / 2, 58, { align: "center", charSpace: 2 });
 
     docGuide.setDrawColor(200, 200, 200);
     docGuide.setLineWidth(0.1);
     docGuide.line(40, 65, guideW - 40, 65);
 
-    // Checklist
+    // Fun Checklist
     docGuide.setFontSize(14);
     docGuide.setTextColor(50, 50, 50);
     docGuide.setFont("helvetica", "bold");
-    docGuide.text("Orchestration Checklist", 20, 85);
+    docGuide.text("The Game Plan", 20, 85);
 
     const instructions = [
-        { head: "I. THE CURATED STUDIO", desc: "Select a workspace with optimal natural light and zero distractions. Your masterpiece requires focus." },
-        { head: "II. PIGMENT PREPARATION", desc: "You have two paths for pigment acquisition:\n1. ACQUIRE: Purchase premixed acrylics matching the provided color names.\n2. SYNTHESIZE: Use the reference chart (Page 4) to mix primary colors into the target hues. This builds hue sensitivity." },
-        { head: "III. DEPTH SYNTHESIS", desc: "Identify subtle micro-regions by cross-referencing with the high-fidelity Original Photo (page 2)." },
-        { head: "IV. THE BRUSH PROTOCOLS", desc: "Apply pigments in thin layers. Build opacity slowly, starting with darker indices for structural shadow." },
-        { head: "V. BLENDING SYMPHONY", desc: "Dotted lines indicate soft-edge transitions. Use a dry brush to blend these for the Studio look." },
-        { head: "VI. GEL TRANSFER PROTOCOL", desc: "To transfer the design to canvas:\n1. Open the 'Download Reverse' PDF.\n2. Print on standard laser/inkjet paper.\n3. Apply Gloss Gel Medium generously to the CANVAS (not paper).\n4. Place print FACE DOWN into the gel. Smooth out all air bubbles.\n5. Allow to dry thoroughly (24h).\n6. Dampen paper with water and gently rub off the paper pulp, leaving the ink embedded in the gel." }
+        { head: "1. SET THE ATMOSPHERE", desc: "Painting requires a vibe. Good lighting is non-negotiable. A beverage is highly recommended. Put on a podcast or playlist." },
+        { head: "2. CHOOSE YOUR METHOD", desc: "OPTION A (EASY): Print the 'Canvas-Ref' PDF on cardstock and just paint it.\nOPTION B (THE CRAFTY PRO WAY): Download the 'Reverse' PDF. Use Gloss Gel Medium to transfer the ink directly onto a real canvas. It looks incredible. Google 'Gel Transfer Method'—it's worth it." },
+        { head: "3. MIX WITH CONFIDENCE", desc: "Use the palette chart on the last page. Don't worry about being exact. Close enough is usually perfect. Channel your inner Bob Ross." },
+        { head: "4. THE 5-FOOT RULE", desc: "Paint-by-numbers looks jagged close up. Step back 5 feet and squint. The magic happens at a distance. Don't stress the tiny details." },
+        { head: "5. MAKE IT YOURS", desc: "If you go outside the lines or change a color, tell people it was an 'artistic choice'. No one will know." }
     ];
 
     let currentY = 100;
@@ -98,20 +99,16 @@ export async function generateGuidePDF(options: GuideOptions): Promise<jsPDF> {
         currentY += (lines.length * 4) + 12;
     });
 
-    // PAGE 2: Original Photo (No changes)
+    // PAGE 2: Original Photo
     if (originalUrl) {
         let originalImg;
         try {
-            // OPTIMIZED LOAD
-            originalImg = await loadOptimizedImage(originalUrl);
+            originalImg = await loadOptimizedImage(originalUrl, 1200, "jpeg");
         } catch (e) { console.warn("Could not load original image", e); }
 
         if (originalImg) {
             const props = docGuide.getImageProperties(originalImg);
-            const w = props.width;
-            const h = props.height;
-            const isLandscape = w > h;
-
+            const isLandscape = props.width > props.height;
             docGuide.addPage("letter", isLandscape ? "landscape" : "portrait");
             addGuideBranding(docGuide, isLandscape);
 
@@ -120,162 +117,307 @@ export async function generateGuidePDF(options: GuideOptions): Promise<jsPDF> {
 
             docGuide.setFontSize(12);
             docGuide.setTextColor(100, 100, 100);
-            docGuide.setFont("helvetica", "bold");
-            docGuide.text("Ref 1: Original Photo", 15, 25);
+            docGuide.text("Reference: The Original Moment", 15, 25);
 
             const availW = pW - 30;
             const availH = pH - 40;
-            const imgAspect = w / h;
-
+            const imgAspect = props.width / props.height;
             let drawW = availW;
             let drawH = availW / imgAspect;
             if (drawH > availH) {
                 drawH = availH;
                 drawW = drawH * imgAspect;
             }
-
             docGuide.addImage(originalImg, "JPEG", (pW - drawW) / 2, 30, drawW, drawH);
         }
     }
 
-    // PAGE 3: Vector Reference (No changes)
+    // PAGE 3: Painted Result (Color Reference)
     try {
-        // OPTIMIZED LOAD
-        const resultImg = await loadOptimizedImage(posterizedUrl);
+        const resultImg = await loadOptimizedImage(posterizedUrl, 1200, "jpeg");
         const props = docGuide.getImageProperties(resultImg);
-        const isResLandscape = props.width > props.height;
+        const isLandscape = props.width > props.height;
 
-        docGuide.addPage("letter", isResLandscape ? "landscape" : "portrait");
-        addGuideBranding(docGuide, isResLandscape);
-
-        const pW2 = docGuide.internal.pageSize.getWidth();
-        const pH2 = docGuide.internal.pageSize.getHeight();
+        docGuide.addPage("letter", isLandscape ? "landscape" : "portrait");
+        addGuideBranding(docGuide, isLandscape);
 
         docGuide.setFontSize(12);
         docGuide.setTextColor(100, 100, 100);
-        docGuide.setFont("helvetica", "bold");
-        docGuide.text("Ref 2: Proposed Outcome", 15, 25);
+        docGuide.text("Reference: The Painted Look", 15, 25);
 
-        const availW2 = pW2 - 30;
-        const availH2 = pH2 - 40;
+        const pW = docGuide.internal.pageSize.getWidth();
+        const pH = docGuide.internal.pageSize.getHeight();
+        const availW = pW - 30;
+        const availH = pH - 40;
         const imgAspect = props.width / props.height;
-        let drawW2 = availW2;
-        let drawH2 = availW2 / imgAspect;
-        if (drawH2 > availH2) {
-            drawH2 = availH2;
-            drawW2 = drawH2 * imgAspect;
+        let drawW = availW;
+        let drawH = availW / imgAspect;
+        if (drawH > availH) {
+            drawH = availH;
+            drawW = drawH * imgAspect;
         }
-        docGuide.addImage(resultImg, "PNG", (pW2 - drawW2) / 2, 30, drawW2, drawH2);
-    } catch (e) { console.warn("Could not load result image", e); }
+
+        // OPACITY FIX: Apply user opacity to match Canvas
+        const finalOpacity = opacity > 0 ? opacity / 100 : 1.0;
+        docGuide.saveGraphicsState();
+        docGuide.setGState(new GState({ opacity: finalOpacity }));
+        docGuide.addImage(resultImg, "JPEG", (pW - drawW) / 2, 30, drawW, drawH);
+        docGuide.restoreGraphicsState();
+    } catch (e) { console.warn(e); }
+
+    // PAGE 4: Canvas Outline (New)
+    try {
+        const outlineImg = await loadOptimizedImage(outlineUrl, 1200, "png"); // Use PNG to preserve line sharpness/transparency
+        const props = docGuide.getImageProperties(outlineImg);
+        const isLandscape = props.width > props.height;
+
+        docGuide.addPage("letter", isLandscape ? "landscape" : "portrait");
+        addGuideBranding(docGuide, isLandscape);
+
+        docGuide.setFontSize(12);
+        docGuide.setTextColor(100, 100, 100);
+        docGuide.text("Reference: Canvas Lines", 15, 25);
+
+        const pW = docGuide.internal.pageSize.getWidth();
+        const pH = docGuide.internal.pageSize.getHeight();
+        const availW = pW - 30;
+        const availH = pH - 40;
+        const imgAspect = props.width / props.height;
+        let drawW = availW;
+        let drawH = availW / imgAspect;
+        if (drawH > availH) {
+            drawH = availH;
+            drawW = drawH * imgAspect;
+        }
+
+        // COMPOSITE: Draw Faded Color Background First (if opacity > 0)
+        // This matches the actual Canvas PDF appearance
+        if (opacity > 0) {
+            try {
+                // Reuse the resultImg from Page 3 if possible, or reload
+                // We'll just reload/cache-hit it here for safety
+                const bgImg = await loadOptimizedImage(posterizedUrl, 1200, "jpeg");
+                const finalOpacity = opacity / 100;
+
+                docGuide.saveGraphicsState();
+                docGuide.setGState(new GState({ opacity: finalOpacity }));
+                docGuide.addImage(bgImg, "JPEG", (pW - drawW) / 2, 30, drawW, drawH);
+                docGuide.restoreGraphicsState();
+            } catch (e) {
+                console.warn("Could not load background for Page 4 composite", e);
+            }
+        }
+
+        // Draw Lines on top
+        docGuide.addImage(outlineImg, "PNG", (pW - drawW) / 2, 30, drawW, drawH);
+    } catch (e) { console.warn(e); }
 
 
-    // PAGE 4: High-Capacity Artist Palette (LANDSCAPE)
+    // PAGE 5: Palette Legend (The New Layout)
     docGuide.addPage("letter", "landscape");
-    addGuideBranding(docGuide, true);
+    // No branding on header to save space? Or Keep it? keep it minimal.
+    // addGuideBranding(docGuide, true); // Let's skip top branding to maximize top space for the palette
 
     const palW = docGuide.internal.pageSize.getWidth();
     const palH = docGuide.internal.pageSize.getHeight();
 
-    const paletteImgW = palW * 0.5; // Smaller centered oval
-    const paletteImgH = paletteImgW * 0.72;
-    const palX = (palW - paletteImgW) / 2;
-    const palY = (palH - paletteImgH) / 2 + 5;
-
+    // 1. Background Palette Image (Full Page / Maximized)
     try {
         const paletteBase = await loadImage("/palette_base.png");
-        docGuide.addImage(paletteBase, "PNG", palX, palY, paletteImgW, paletteImgH);
+        // Maintain Aspect Ratio, fit Width
+        const palBaseAspect = 1.4; // rough guess
+        let pImgW = palW;
+        let pImgH = pImgW / palBaseAspect;
+
+        // If height is too tall, constrain by height
+        if (pImgH > palH) {
+            pImgH = palH;
+            pImgW = pImgH * palBaseAspect;
+        }
+
+        // Center it
+        const px = (palW - pImgW) / 2;
+        const py = (palH - pImgH) / 2;
+
+        docGuide.addImage(paletteBase, "PNG", px, py, pImgW, pImgH);
     } catch (e) { console.warn(e) }
 
-    // Studio Title
+    // Title Overlay (Centered)
     docGuide.setFontSize(24);
     docGuide.setTextColor(40, 40, 40);
     docGuide.setFont("helvetica", "bold");
-    docGuide.text("Studio Palette", palW / 2, 35, { align: "center" });
+    docGuide.text("Studio Palette", palW / 2, 20, { align: "center" });
 
-    // Subtitle
+    docGuide.setFontSize(9);
+    docGuide.setTextColor(80, 80, 80);
+    docGuide.setFont("helvetica", "normal");
+    docGuide.text(`Mixing Guide for ${palette.length} Colors`, palW / 2, 26, { align: "center" });
+
+
+    // 2. The 4-Column Grid
+    const margin = 10;
+    const numCols = 4;
+    const colGap = 4;
+    const availableW = palW - (2 * margin);
+    const colWidth = (availableW - ((numCols - 1) * colGap)) / numCols;
+
+    const startY = 35;
+    const endY = palH - 10;
+    const availableH = endY - startY;
+
+    // Calculate Rows needed
+    const numRows = Math.ceil(palette.length / numCols);
+
+    // Dynamic Row Height: Fill the space!
+    // If 24 colors -> 6 rows. 170mm / 6 = 28mm height (Huge!). 
+    // If 40 colors -> 10 rows. 170mm / 10 = 17mm height (Good).
+    const calculatedRowH = availableH / numRows;
+    const rowH = Math.min(35, Math.max(14, calculatedRowH));
+
+    // Dynamic Fonts & Swatch
+    const swatchSize = rowH * 0.7; // Large swatches (70% of height)
+    const nameSize = Math.min(10, rowH * 0.25); // Limit font size so it doesn't look cartoonish
+    const recipeSize = Math.min(7, rowH * 0.2);
+
+    palette.forEach((item, i) => {
+        const col = i % numCols;
+        const row = Math.floor(i / numCols);
+
+        const x = margin + (col * (colWidth + colGap));
+        const y = startY + (row * rowH);
+
+        // Center content vertically in the row
+        const centerY = y + (rowH / 2);
+
+        // Swatch (Left)
+        docGuide.setFillColor(item.color);
+        docGuide.setDrawColor(200, 200, 200);
+        docGuide.setLineWidth(0.1);
+        docGuide.rect(x, centerY - (swatchSize / 2), swatchSize, swatchSize, "FD");
+
+        // Text (Right of Swatch)
+        const tx = x + swatchSize + 3;
+        const maxTextW = colWidth - swatchSize - 3;
+
+        // ID & Name
+        docGuide.setFontSize(nameSize);
+        docGuide.setFont("helvetica", "bold");
+        docGuide.setTextColor(20, 20, 20);
+        docGuide.text(`${i + 1}. ${item.name}`, tx, centerY - 1, { maxWidth: maxTextW });
+
+        // Recipe
+        const recipe = getAcrylicRecipe(item.color);
+        docGuide.setFontSize(recipeSize);
+        docGuide.setFont("helvetica", "normal");
+        docGuide.setTextColor(80, 80, 80);
+        // Clean up recipe string for tight space
+        const cleanRecipe = recipe
+            .replace("Use standard", "Standard")
+            .replace("Mix", "Mix:")
+            .replace(/\[/g, "")
+            .replace(/\]/g, "");
+        docGuide.text(cleanRecipe, tx, centerY + 2 + recipeSize, { maxWidth: maxTextW, lineHeightFactor: 1.2 });
+    });
+
+    // PAGE 6: Shopping List
+    docGuide.addPage("letter", "portrait");
+    addGuideBranding(docGuide, false);
+
+    // Header
+    const shopW = docGuide.internal.pageSize.getWidth();
+    docGuide.setFontSize(22);
+    docGuide.setTextColor(20, 20, 20);
+    docGuide.setFont("helvetica", "bold");
+    docGuide.text("Studio Inventory Checklist", shopW / 2, 40, { align: "center" });
+
     docGuide.setFontSize(10);
     docGuide.setTextColor(100, 100, 100);
     docGuide.setFont("helvetica", "normal");
-    docGuide.text("Recipes based on standard 24-piece acrylic sets (Liquitex/Golden Basics)", palW / 2, 42, { align: "center" });
+    docGuide.text("Everything you need to complete your masterpiece.", shopW / 2, 48, { align: "center" });
 
-    // Palette Logic
-    const pcx = palW / 2;
-    const pcy = palY + (paletteImgH / 2);
+    // SECTION 1: Base Paints (Swatches)
+    const requiredPaints = getShoppingList(palette.map(p => p.color));
 
-    const ovalRx = (paletteImgW / 2) * 0.8;
-    const ovalRy = (paletteImgH / 2) * 0.8;
+    let shopY = 65;
 
-    const labelRx = (paletteImgW / 2) * 1.4;
-    const labelRy = (paletteImgH / 2) * 1.5;
+    docGuide.setFontSize(14);
+    docGuide.setTextColor(50, 50, 50);
+    docGuide.setFont("helvetica", "bold");
+    docGuide.text("1. Base Acrylic Paints", 20, shopY);
 
-    const startAngle = Math.PI;
-    const totalAngle = Math.PI * 2;
+    docGuide.line(20, shopY + 3, shopW - 20, shopY + 3);
+    shopY += 15;
 
-    palette.forEach((item, i) => {
-        const angle = startAngle + (i * (totalAngle / palette.length));
+    // 3-Column Grid for Paints
+    const paintCols = 3;
+    const PaintColW = (shopW - 40) / paintCols;
+    const paintRowH = 12;
 
-        const bx = pcx + ovalRx * Math.cos(angle);
-        const by = pcy + ovalRy * Math.sin(angle);
-        const lx = pcx + labelRx * Math.cos(angle);
-        const ly = pcy + labelRy * Math.sin(angle);
+    requiredPaints.forEach((paint, i) => {
+        const col = i % paintCols;
+        const row = Math.floor(i / paintCols);
 
-        // Connection Line
-        if (GState) {
-            docGuide.saveGraphicsState();
-            docGuide.setGState(new GState({ opacity: 0.2 }));
-            docGuide.setDrawColor(150, 150, 150);
-            docGuide.line(bx, by, lx, ly);
-            docGuide.restoreGraphicsState();
-        }
+        const px = 20 + (col * PaintColW);
+        const py = shopY + (row * paintRowH);
 
-        // Dollop
-        const dollopSize = 6.5;
+        // Checkbox
+        docGuide.setDrawColor(150, 150, 150);
+        docGuide.setLineWidth(0.1);
+        docGuide.setFillColor(255, 255, 255);
+        docGuide.rect(px, py, 5, 5);
 
-        // Shadow
-        if (GState) {
-            docGuide.saveGraphicsState();
-            docGuide.setGState(new GState({ opacity: 0.1 }));
-            docGuide.setFillColor(0, 0, 0);
-            docGuide.circle(bx + 1, by + 1, dollopSize + 0.5, "F");
-            docGuide.restoreGraphicsState();
-        }
+        // Swatch
+        const hex = getStandardHex(paint);
+        docGuide.setFillColor(hex);
+        docGuide.setDrawColor(200, 200, 200);
+        docGuide.circle(px + 12, py + 2.5, 3, "FD");
 
-        // Paint
-        docGuide.setFillColor(item.color);
-        docGuide.setDrawColor(255, 255, 255);
-        docGuide.setLineWidth(0.2);
-        docGuide.circle(bx, by, dollopSize, "FD");
-
-        // Gloss
-        if (GState) {
-            docGuide.saveGraphicsState();
-            docGuide.setGState(new GState({ opacity: 0.3 }));
-            docGuide.setFillColor(255, 255, 255);
-            docGuide.circle(bx - 2, by - 2, 2.5, "F");
-            docGuide.restoreGraphicsState();
-        }
-
-        // Text
-        docGuide.setFontSize(9);
+        // Name
+        docGuide.setFontSize(10);
+        docGuide.setTextColor(40, 40, 40);
         docGuide.setFont("helvetica", "bold");
-        docGuide.setTextColor(50, 50, 50);
-        docGuide.text(`${i + 1}`, lx, ly - 3, { align: "center" });
-
-        docGuide.setFontSize(7);
-        docGuide.setFont("helvetica", "normal");
-        const dName = item.name.length > 12 ? item.name.substring(0, 10) + ".." : item.name;
-        docGuide.text(dName, lx, ly + 1, { align: "center" });
-
-        const amt = (unit === "ml" ? item.amount : item.amount * 0.0338).toFixed(1) + unit;
-        docGuide.setTextColor(100, 100, 100);
-        docGuide.text(`(${amt})`, lx, ly + 4, { align: "center" });
-
-        // NEW: Mixing Recipe
-        const recipe = getAcrylicRecipe(item.color);
-        docGuide.setTextColor(79, 70, 229); // Indigo
-        docGuide.setFontSize(6);
-        docGuide.text(recipe, lx, ly + 8, { align: "center", maxWidth: 45 }); // Constraint width to avoid overlap
+        docGuide.text(paint, px + 19, py + 3.5);
     });
+
+    shopY += (Math.ceil(requiredPaints.length / paintCols) * paintRowH) + 20;
+
+    // SECTION 2: Essentials
+    docGuide.setFontSize(14);
+    docGuide.setTextColor(50, 50, 50);
+    docGuide.setFont("helvetica", "bold");
+    docGuide.text("2. Studio Essentials", 20, shopY);
+    docGuide.line(20, shopY + 3, shopW - 20, shopY + 3);
+    shopY += 15;
+
+    const essentials = [
+        "Detail Brush (Size 0 or 00) for tiny areas",
+        "Round Brush (Size 4) for general coverage",
+        "Flat Brush (Size 8) for large backgrounds",
+        "Palette Knife (for mixing colors cleanly)",
+        "Water Cup & Paper Towels",
+        "Palette Paper or a white ceramic plate"
+    ];
+
+    essentials.forEach((item) => {
+        docGuide.setDrawColor(150, 150, 150);
+        docGuide.setFillColor(255, 255, 255);
+        docGuide.rect(20, shopY, 5, 5); // Checkbox
+
+        docGuide.setFontSize(10);
+        docGuide.setTextColor(60, 60, 60);
+        docGuide.setFont("helvetica", "normal");
+        docGuide.text(item, 30, shopY + 3.5);
+
+        shopY += 10;
+    });
+
+    // Footer note
+    shopY += 15;
+    docGuide.setFontSize(9);
+    docGuide.setTextColor(100, 100, 100);
+    docGuide.setFont("helvetica", "italic");
+    docGuide.text("Note: Standard 'Student Grade' acrylics (Liquitex Basics, Golden) are perfect for this project.", shopW / 2, shopY, { align: "center" });
+
 
     return docGuide;
 }

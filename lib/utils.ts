@@ -13,6 +13,7 @@ export async function getCroppedImg(imageSrc: string, pixelCrop: Area): Promise<
         img.crossOrigin = "anonymous";
         img.src = imageSrc;
         img.onload = () => resolve(img);
+        img.onerror = (e) => reject(new Error(`Failed to load image for cropping: ${e}`));
     });
 
     const canvas = document.createElement("canvas");

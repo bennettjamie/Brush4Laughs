@@ -42,8 +42,10 @@ export async function generatePDF(
             const guideDoc = await generateGuidePDF({
                 originalUrl,
                 posterizedUrl: outputUrl,
+                outlineUrl,
                 palette,
-                unit: "ml"
+                unit: "ml",
+                opacity
             });
             const guideBuffer = Buffer.from(guideDoc.output("arraybuffer"));
 

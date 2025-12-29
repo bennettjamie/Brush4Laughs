@@ -10,11 +10,13 @@ export interface VectorizationResult {
 export function runVectorization(
     preprocess: PreprocessResult,
     quantize: QuantizeResult,
-    segmentation: SegmentationResult
+    segmentation: SegmentationResult,
+    options?: { bgOpacity?: number }
 ): VectorizationResult {
     const { width, height } = preprocess;
     const { centroids } = quantize;
     const { indexMap } = segmentation;
+    const bgOpacity = options?.bgOpacity ?? 0.1; // Default 10%
 
     const posterizedData = Buffer.alloc(width * height * 4);
     const outlineData = Buffer.alloc(width * height * 4);
@@ -130,11 +132,22 @@ export function runVectorization(
                         }
                     }
                 } else {
-                    outlineData[offset + 3] = 0;
+                    // NO LINE -> BLEND GHOST COLOR
+                    const c = centroids[myIdx];
+                    outlineData[offset] = Math.round(c[0]);
+                    outlineData[offset + 1] = Math.round(c[1]);
+                    outlineData[offset + 2] = Math.round(c[2]);
+                    outlineData[offset + 3] = Math.round(255 * bgOpacity);
                 }
 
             } else {
-                outlineData[offset + 3] = 0;
+                // NO EDGE -> BLEND GHOST COLOR
+                // This ensures the whole canvas is filled with faint color
+                const c = centroids[myIdx];
+                outlineData[offset] = Math.round(c[0]);
+                outlineData[offset + 1] = Math.round(c[1]);
+                outlineData[offset + 2] = Math.round(c[2]);
+                outlineData[offset + 3] = Math.round(255 * bgOpacity);
             }
         }
     }

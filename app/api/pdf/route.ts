@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generatePDF } from "@/lib/pdf/generator";
 import AdmZip from "adm-zip";
+import fs from "fs";
 
 export const config = {
     maxDuration: 60,
@@ -12,8 +13,16 @@ export const config = {
 };
 
 export async function POST(req: NextRequest) {
+    const fs = require('fs');
+    const path = require('path');
+    const debugLogPath = 'c:/Users/USER/HueDoTheNumbers/pdf-debug.log';
+
     try {
+        fs.appendFileSync(debugLogPath, `[${new Date().toISOString()}] Request received\n`);
+
         const body = await req.json();
+        fs.appendFileSync(debugLogPath, `[${new Date().toISOString()}] Body parsed. Type: ${body.type}\n`);
+
         const {
             outlineUrl,
             resultUrl,
@@ -92,12 +101,29 @@ export async function POST(req: NextRequest) {
 
     } catch (error) {
         console.error("PDF Generation Error (Detailed):");
+
+        // HARDCODED PATH FOR DEBUGGING RELIABILITY
+        const logPath = 'c:/Users/USER/HueDoTheNumbers/pdf-error.log';
+        let errorMsg = `[${new Date().toISOString()}] CWD: ${process.cwd()}\n`;
+
         if (error instanceof Error) {
             console.error("Message:", error.message);
             console.error("Stack:", error.stack);
+            errorMsg += `Message: ${error.message}\nStack: ${error.stack}\n\n`;
         } else {
             console.error(error);
+            errorMsg += `Error: ${JSON.stringify(error)}\n\n`;
         }
+
+        try {
+            if (!fs.existsSync(logPath)) {
+                fs.writeFileSync(logPath, '');
+            }
+            fs.appendFileSync(logPath, errorMsg);
+        } catch (e) {
+            console.error("Failed to write to log file", e);
+        }
+
         return NextResponse.json({ error: "Failed to generate PDF" }, { status: 500 });
     }
 }

@@ -1,4 +1,4 @@
-import { Upload, Loader2, Check } from "lucide-react";
+import { Upload, Loader2, Check, Camera, Shield } from "lucide-react";
 import { PRO_TIPS } from "@/lib/constants";
 
 type UploadStepProps = {
@@ -18,6 +18,18 @@ export function UploadStep({ isUploading, onFileChange }: UploadStepProps) {
                     onChange={onFileChange}
                     disabled={isUploading}
                 />
+
+                {/* Secondary Input for Direct Camera Access */}
+                <input
+                    type="file"
+                    id="camera-upload"
+                    className="hidden"
+                    accept="image/*"
+                    capture="environment" // Forces rear camera on mobile
+                    onChange={onFileChange}
+                    disabled={isUploading}
+                />
+
                 <label
                     htmlFor="upload"
                     className="flex flex-col items-center cursor-pointer group"
@@ -35,11 +47,35 @@ export function UploadStep({ isUploading, onFileChange }: UploadStepProps) {
                             )}
                         </div>
                     </div>
-                    <h2 className="text-3xl font-bold mb-3 text-foreground">Upload a Photo</h2>
-                    <p className="text-muted-foreground dark:text-slate-100 max-w-sm mx-auto text-2xl font-medium tracking-tight">
+                </label>
+
+                <div className="flex flex-col items-center gap-6">
+                    <div>
+                        <h2 className="text-3xl font-bold mb-3 text-foreground">Upload a Photo</h2>
+                        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mt-6">
+                            <label
+                                htmlFor="upload"
+                                className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-all cursor-pointer shadow-lg active:scale-95"
+                            >
+                                Choose File
+                            </label>
+
+                            <span className="text-muted-foreground font-bold text-sm uppercase px-2">or</span>
+
+                            <label
+                                htmlFor="camera-upload"
+                                className="px-8 py-3 bg-white dark:bg-white/10 text-foreground border-2 border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/20 rounded-xl font-bold transition-all cursor-pointer shadow-sm active:scale-95 flex items-center gap-2"
+                            >
+                                <Camera className="w-5 h-5" />
+                                Take a Picture
+                            </label>
+                        </div>
+                    </div>
+
+                    <p className="text-muted-foreground dark:text-slate-100 max-w-sm mx-auto text-xl font-medium tracking-tight">
                         Select a high-quality photo to convert into a paint-by-number template.
                     </p>
-                </label>
+                </div>
             </div>
 
             {/* Quality Advisory */}
@@ -68,6 +104,14 @@ export function UploadStep({ isUploading, onFileChange }: UploadStepProps) {
                         Our AI preserves details, but if a face is blurry or completely shadowed in the original photo, it may appear blob-like in the paint-by-numbers pattern.
                     </div>
                 </div>
+            </div>
+
+            {/* Privacy Micro-Copy */}
+            <div className="mt-8 text-center">
+                <p className="text-xs text-muted-foreground/60 font-medium flex items-center justify-center gap-2">
+                    <Shield className="w-3 h-3" />
+                    <span className="opacity-75">Your privacy matters. Photos are processed securely and automatically deleted after 24 hours.</span>
+                </p>
             </div>
         </>
     );

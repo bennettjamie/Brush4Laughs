@@ -68,8 +68,29 @@ export async function runFaceDetection(preprocess: PreprocessResult): Promise<{
 
     const { data, width, height } = preprocess;
 
+    // --- OPTIMIZATION: Downscale for Detection if huge ---
+    const MAX_DETECTION_WIDTH = 1500;
+    let detectionWidth = width;
+    let detectionHeight = height;
+    let detectionData = data;
+    let scaleFactor = 1.0;
+
+    if (width > MAX_DETECTION_WIDTH) {
+        scaleFactor = MAX_DETECTION_WIDTH / width;
+        detectionWidth = MAX_DETECTION_WIDTH;
+        detectionHeight = Math.round(height * scaleFactor);
+
+        console.log(`[Faces] Downscaling for performance: ${width}x${height} -> ${detectionWidth}x${detectionHeight} (Scale: ${scaleFactor.toFixed(2)})`);
+
+        const sharp = (await import("sharp")).default;
+        detectionData = await sharp(data, { raw: { width, height, channels: 4 } })
+            .resize(detectionWidth, detectionHeight)
+            .raw()
+            .toBuffer();
+    }
+
     // Convert Buffer to Tensor 
-    const tensor = tf.tensor3d(new Uint8Array(data), [height, width, 4], 'int32');
+    const tensor = tf.tensor3d(new Uint8Array(detectionData), [detectionHeight, detectionWidth, 4], 'int32');
 
     // Detect
     const result = await human.detect(tensor);
@@ -79,24 +100,25 @@ export async function runFaceDetection(preprocess: PreprocessResult): Promise<{
 
     // Extract Boxes (Faces + Bodies)
     const faces = result.face.map((face: FaceResult) => {
+        // Map back to original coordinate space
         const [x, y, w, h] = face.box;
 
-        // Extract Landmarks from Mesh
+        // Extract Landmarks from Mesh (Scaled)
         let landmarks: any = {};
         if (face.mesh && face.mesh.length > 470) {
             landmarks = {
-                leftEye: [face.mesh[468][0], face.mesh[468][1]],
-                rightEye: [face.mesh[473][0], face.mesh[473][1]],
-                nose: [face.mesh[1][0], face.mesh[1][1]],
-                mouth: [face.mesh[13][0], face.mesh[13][1]]
+                leftEye: [face.mesh[468][0] / scaleFactor, face.mesh[468][1] / scaleFactor],
+                rightEye: [face.mesh[473][0] / scaleFactor, face.mesh[473][1] / scaleFactor],
+                nose: [face.mesh[1][0] / scaleFactor, face.mesh[1][1] / scaleFactor],
+                mouth: [face.mesh[13][0] / scaleFactor, face.mesh[13][1] / scaleFactor]
             };
         }
 
         return {
-            x,
-            y,
-            width: w,
-            height: h,
+            x: x / scaleFactor,
+            y: y / scaleFactor,
+            width: w / scaleFactor,
+            height: h / scaleFactor,
             score: face.boxScore || face.score,
             landmarks
         };
@@ -105,10 +127,10 @@ export async function runFaceDetection(preprocess: PreprocessResult): Promise<{
     const bodies = result.body.map((body: BodyResult) => {
         const [x, y, w, h] = body.box;
         return {
-            x,
-            y,
-            width: w,
-            height: h,
+            x: x / scaleFactor,
+            y: y / scaleFactor,
+            width: w / scaleFactor,
+            height: h / scaleFactor,
             score: body.score,
         };
     });
@@ -118,7 +140,11 @@ export async function runFaceDetection(preprocess: PreprocessResult): Promise<{
         result.hand.forEach(hand => {
             const [x, y, w, h] = hand.box;
             bodies.push({
-                x, y, width: w, height: h, score: hand.score
+                x: x / scaleFactor,
+                y: y / scaleFactor,
+                width: w / scaleFactor,
+                height: h / scaleFactor,
+                score: hand.score
             });
         });
     }
@@ -127,45 +153,119 @@ export async function runFaceDetection(preprocess: PreprocessResult): Promise<{
     let mask: Uint8Array | null = null;
     const anyResult = result as any;
     if (anyResult.segmentation && anyResult.segmentation.data) {
-        // Handle both 0-255 and 0-1 ranges
         const rawMask = anyResult.segmentation.data;
-        if (rawMask.length === width * height) {
-            const tempMask = new Uint8Array(width * height);
-            for (let i = 0; i < rawMask.length; i++) {
-                const val = rawMask[i];
-                // Threshold logic:
-                tempMask[i] = (val > 100 || (val > 0.4 && val <= 1.0)) ? 1 : 0;
+        // Upscale Mask if needed
+        if (Math.abs(scaleFactor - 1.0) > 0.01) {
+            mask = new Uint8Array(width * height);
+
+            // Nearest Neighbor Upscale
+            // We iterate destination (full size) and sample source
+            const sW = detectionWidth;
+            // const sH = detectionHeight;
+
+            for (let y = 0; y < height; y++) {
+                const sy = Math.floor(y * scaleFactor);
+                // Clamp
+                if (sy >= detectionHeight) continue;
+
+                const yOffset = y * width;
+                const syOffset = sy * sW;
+
+                for (let x = 0; x < width; x++) {
+                    const sx = Math.floor(x * scaleFactor);
+                    if (sx >= detectionWidth) continue;
+
+                    const val = rawMask[syOffset + sx];
+                    mask[yOffset + x] = (val > 100 || (val > 0.4 && val <= 1.0)) ? 1 : 0;
+                }
             }
+        } else {
+            // No scaling, just threshold
+            if (rawMask.length === width * height) {
+                const tempMask = new Uint8Array(width * height);
+                for (let i = 0; i < rawMask.length; i++) {
+                    const val = rawMask[i];
+                    tempMask[i] = (val > 100 || (val > 0.4 && val <= 1.0)) ? 1 : 0;
+                }
+                mask = tempMask;
+            }
+        }
 
-            // MANUAL MASK INJECTION FOR HANDS
-            // Human segmentation sometimes misses extremities.
-            // We force the box area (loosely) into the mask if high confidence?
-            // Actually, just relying on `bodies` array for quantization is good, 
-            // but for Refinement, we check `mask`.
-            // Let's paint the hand boxes into the mask.
-            if (result.hand) {
-                result.hand.forEach(hand => {
-                    if (hand.score > 0.3) {
-                        const startX = Math.max(0, Math.floor(hand.box[0]));
-                        const startY = Math.max(0, Math.floor(hand.box[1]));
-                        const endX = Math.min(width, Math.ceil(hand.box[0] + hand.box[2]));
-                        const endY = Math.min(height, Math.ceil(hand.box[1] + hand.box[3]));
+        // Apply Manual Hand Masking (Scaled)
+        if (mask && result.hand) {
+            result.hand.forEach(hand => {
+                if (hand.score > 0.3) {
+                    // Scale Hand Box back to Original Space
+                    const hx = hand.box[0] / scaleFactor;
+                    const hy = hand.box[1] / scaleFactor;
+                    const hw = hand.box[2] / scaleFactor;
+                    const hh = hand.box[3] / scaleFactor;
 
-                        for (let y = startY; y < endY; y++) {
-                            for (let x = startX; x < endX; x++) {
-                                tempMask[y * width + x] = 1;
-                            }
+                    const startX = Math.max(0, Math.floor(hx));
+                    const startY = Math.max(0, Math.floor(hy));
+                    const endX = Math.min(width, Math.ceil(hx + hw));
+                    const endY = Math.min(height, Math.ceil(hy + hh));
+
+                    for (let y = startY; y < endY; y++) {
+                        for (let x = startX; x < endX; x++) {
+                            mask![y * width + x] = 1;
                         }
                     }
-                });
-            }
+                }
+            });
+        }
 
-            mask = hardenMask(tempMask, width, height);
+        if (mask) {
+            mask = hardenMask(mask, width, height);
         }
     }
 
+    // FALLBACK: HEAD ESTIMATION for Missing Faces (Profiles/Back of heads)
+    // If a body exists but has no corresponding face detected, we infer the head position.
+    bodies.forEach(body => {
+        // Heuristic: Head is roughly the top 1/5th of the body box, centered horizontally.
+        // Or if 'nose' keypoint exists (not extracting keypoints here for perf, using box heuristic).
+
+        // Refined Heuristic:
+        // Head Width ~ 1/3 to 1/2 of Body Width (Shoulders)
+        // Head Height ~ 1/6 to 1/5 of Body Height
+
+        const headW = body.width * 0.4;
+        const headH = body.height * 0.18;
+        const headX = body.x + (body.width - headW) / 2;
+        const headY = body.y; // Top of body box
+
+        // Check if this "Estimated Head" is covered by an existing Real Face
+        let isCovered = false;
+        for (const face of faces) {
+            // Check Intersection
+            const ix = Math.max(face.x, headX);
+            const iy = Math.max(face.y, headY);
+            const iw = Math.min(face.x + face.width, headX + headW) - ix;
+            const ih = Math.min(face.y + face.height, headY + headH) - iy;
+
+            if (iw > 0 && ih > 0) {
+                // If overlap is significant (any overlap really, meaning we found A face there)
+                isCovered = true;
+                break;
+            }
+        }
+
+        if (!isCovered) {
+            // NO FACE FOUND for this body. Inject Synthetic Face.
+            faces.push({
+                x: headX,
+                y: headY,
+                width: headW,
+                height: headH, // Extend down slightly?
+                score: body.score * 0.8, // Slightly lower confidence than real body
+                landmarks: {} // No landmarks for synthetic
+            });
+        }
+    });
+
     return {
-        faces: [...faces, ...bodies],
+        faces: faces, // DO NOT merge bodies here. Bodies are handled by the mask.
         mask
     };
 }

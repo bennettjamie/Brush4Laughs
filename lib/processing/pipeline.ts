@@ -1,3 +1,4 @@
+import "server-only";
 import path from "path";
 import { randomUUID } from "crypto";
 import sharp from "sharp";
@@ -25,7 +26,7 @@ export async function processImage(
     numColors: number,
     complexity: number = 5,
     customDim?: { width: number, height: number },
-    options?: { faceDetail?: number; bodyDetail?: number; bgDetail?: number }
+    options?: { faceDetail?: number; bodyDetail?: number; bgDetail?: number; textDetail?: number; bgOpacity?: number }
 ): Promise<{
     outputUrl: string;
     outlineUrl: string;
@@ -33,14 +34,19 @@ export async function processImage(
     labels: { x: number; y: number; index: number; light?: boolean; fontSize?: number }[];
     dimensions: { width: number; height: number };
 }> {
+    console.time("TotalPipeline");
+
     // 1. Preprocess (Load Image & Resize)
+    console.time("Preprocess");
     const preprocess = await runPreprocess({ imagePath, numColors, complexity, customDim, ...options });
+    console.timeEnd("Preprocess");
     const { width, height, data } = preprocess;
 
     console.log(`[Pipeline] Input: ${width}x${height}`);
 
     // 1.5 Face Detection & Subject Masking
     let mask: Uint8Array | null = null;
+    console.time("FaceDetection");
     try {
         const detection = await runFaceDetection(preprocess);
         preprocess.faces = detection.faces;
@@ -56,6 +62,21 @@ export async function processImage(
     } catch (e) {
         console.warn("[FaceDetection] Failed:", e);
     }
+    console.timeEnd("FaceDetection");
+
+    // 1.6 Text Detection
+    console.time("TextDetection");
+    try {
+        // Lazy load to prevent top-level impact
+        const { runTextDetection } = require("./stages/text");
+        console.log("[Pipeline] Running Text Detection...");
+        const textResults = await runTextDetection(preprocess);
+        preprocess.text = textResults;
+    } catch (e) {
+        // Non-fatal error: Log and continue so the user still gets a result
+        console.warn("[TextDetection] Failed (Skipping text optimization):", e);
+    }
+    console.timeEnd("TextDetection");
 
     // 2. ENHANCE FACES (Hyper-Contrast)
     // We modify the data in-place to force high contrast on features
@@ -166,16 +187,22 @@ export async function processImage(
     const MIN_REGION_MM2 = 10;
     const mergeThresholdPixels = Math.round(MIN_REGION_MM2 * (pixelsPerMm ** 2));
 
+    console.time("Refinement");
     runRefinement(preprocess, mergedQuantize, mergedSegmentation, {
         pixelsPerMm,
         mergeThresholdPixels
     });
+    console.timeEnd("Refinement");
 
     // 5. Vectorization (Posterize + Outline)
-    const vectorization = runVectorization(preprocess, mergedQuantize, mergedSegmentation);
+    console.time("Vectorization");
+    const vectorization = runVectorization(preprocess, mergedQuantize, mergedSegmentation, { bgOpacity: options?.bgOpacity });
+    console.timeEnd("Vectorization");
 
     // 6. Labeling (Optimized)
+    console.time("Labeling");
     const { labels, maxRegion } = runLabeling(mergedSegmentation, width, height);
+    console.timeEnd("Labeling");
 
     // 7. Output Generation & IO
     const resultId = randomUUID();
@@ -217,6 +244,7 @@ export async function processImage(
         };
     });
 
+    console.timeEnd("TotalPipeline");
     return {
         outputUrl: `/uploads/${posterizedFilename}`,
         outlineUrl: `/uploads/${outlineFilename}`,

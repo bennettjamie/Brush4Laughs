@@ -19,6 +19,9 @@ type OptionsStepProps = {
     setFaceDetail: (val: number) => void;
     setBodyDetail: (val: number) => void;
     setBgDetail: (val: number) => void;
+    // Text Prop
+    textDetail: number;
+    setTextDetail: (val: number) => void;
     onGenerate: () => void;
     onBack: () => void;
 };
@@ -38,6 +41,8 @@ export function OptionsStep({
     setFaceDetail,
     setBodyDetail,
     setBgDetail,
+    textDetail,
+    setTextDetail,
     onGenerate,
     onBack,
 }: OptionsStepProps) {
@@ -156,6 +161,30 @@ export function OptionsStep({
                                     className="w-full h-1 bg-slate-300 dark:bg-white/20 rounded-lg appearance-none cursor-pointer accent-indigo-500"
                                 />
                             </div>
+
+                            {/* Text Detail Slider */}
+                            <div>
+                                <div className="flex justify-between mb-2">
+                                    <label className="text-sm font-bold uppercase tracking-wide">Text Clarity</label>
+                                    <span className={`text-sm font-bold ${textDetail > 20 ? "text-indigo-500" : "text-muted-foreground"}`}>
+                                        {textDetail === 0 ? "Off" : textDetail + "%"}
+                                    </span>
+                                </div>
+                                <input
+                                    type="range"
+                                    min="0"
+                                    max="100"
+                                    step="5"
+                                    value={textDetail}
+                                    onChange={(e) => setTextDetail(Number(e.target.value))}
+                                    className="w-full h-1 bg-slate-300 dark:bg-white/20 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                                />
+                                <p className="text-xs text-muted-foreground mt-2">
+                                    {textDetail === 0 ? "Fastest speed. Ignores small text." :
+                                        textDetail <= 50 ? "Enhanced detection." :
+                                            "High-Def Scan (Slower). Catches tiny letters."}
+                                </p>
+                            </div>
                         </div>
                     </div>
 
@@ -183,7 +212,13 @@ export function OptionsStep({
                         className="relative w-full bg-slate-50 dark:bg-slate-900 rounded-3xl overflow-hidden shadow-2xl ring-1 ring-slate-200 dark:ring-white/10"
                         style={{ aspectRatio: croppedAreaPixels ? croppedAreaPixels.width / croppedAreaPixels.height : 1 }}
                     >
-                        <Image src={croppedImage} alt="Crop preview" fill className="object-contain p-4" />
+                        <Image
+                            src={croppedImage}
+                            alt="Crop preview"
+                            fill
+                            className="object-contain p-4"
+                            sizes="(max-width: 768px) 100vw, 50vw"
+                        />
                     </div>
                 </div>
 

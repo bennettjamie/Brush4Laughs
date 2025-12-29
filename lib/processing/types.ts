@@ -6,6 +6,8 @@ export interface ProcessingOptions {
     faceDetail?: number; // 0-100
     bodyDetail?: number; // 0-100
     bgDetail?: number; // 0-100
+    textDetail?: number; // 0-100 (New: Text Clarity)
+    bgOpacity?: number; // 0.0-1.0
 }
 
 export interface PreprocessResult {
@@ -26,10 +28,12 @@ export interface PreprocessResult {
             nose?: [number, number];
         }
     }[];
+    text?: { x: number, y: number, width: number, height: number, confidence: number, text: string }[];
     mask?: Uint8Array; // 0=Background, 1=Subject
     faceDetail?: number;
     bodyDetail?: number;
     bgDetail?: number;
+    textDetail?: number;
 }
 
 export interface QuantizeResult {
