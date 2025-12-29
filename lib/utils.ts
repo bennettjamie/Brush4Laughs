@@ -8,7 +8,7 @@ export function cn(...inputs: ClassValue[]) {
 
 // --- Utility to crop image (client-side) ---
 export async function getCroppedImg(imageSrc: string, pixelCrop: Area): Promise<Blob> {
-    const image = await new Promise<HTMLImageElement>((resolve) => {
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
         const img = new window.Image();
         img.crossOrigin = "anonymous";
         img.src = imageSrc;
