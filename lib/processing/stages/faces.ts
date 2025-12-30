@@ -55,10 +55,16 @@ export async function runFaceDetection(preprocess: PreprocessResult): Promise<{
                 antispoof: { enabled: false },
                 liveness: { enabled: false },
             },
-            body: { enabled: true },
-            segmentation: { enabled: true }, // Enable Segmentation
-            hand: { enabled: true }, // Enable Hand for "Woman holding bicycle"
-            object: { enabled: false }, // Don't need generic objects, can be slow
+            body: {
+                enabled: true,
+                modelPath: 'movenet-lightning.json' // Use lightweight MoveNet
+            },
+            segmentation: { enabled: false }, // Keep disabled to avoid RVM 404
+            hand: { enabled: false },
+            object: {
+                enabled: true,
+                modelPath: 'nanodet.json' // Use lightweight NanoDet
+            },
             gesture: { enabled: false },
         };
 
@@ -69,7 +75,7 @@ export async function runFaceDetection(preprocess: PreprocessResult): Promise<{
     const { data, width, height } = preprocess;
 
     // --- OPTIMIZATION: Downscale for Detection if huge ---
-    const MAX_DETECTION_WIDTH = 1500;
+    const MAX_DETECTION_WIDTH = 1024; // Reduced from 1500 for VPS CPU safety
     let detectionWidth = width;
     let detectionHeight = height;
     let detectionData = data;
@@ -135,138 +141,122 @@ export async function runFaceDetection(preprocess: PreprocessResult): Promise<{
         };
     });
 
-    // Inject Hands as pseudo-bodies to ensure they are treated as Subjects
-    if (result.hand && result.hand.length > 0) {
-        result.hand.forEach(hand => {
-            const [x, y, w, h] = hand.box;
-            bodies.push({
+    // Extract Objects (NanoDet)
+    const objects: any[] = [];
+    if (result.object) {
+        result.object.forEach(obj => {
+            const [x, y, w, h] = obj.box;
+            objects.push({
                 x: x / scaleFactor,
                 y: y / scaleFactor,
                 width: w / scaleFactor,
                 height: h / scaleFactor,
-                score: hand.score
+                score: obj.score,
+                label: obj.label
             });
         });
     }
 
     // Extract Mask
-    let mask: Uint8Array | null = null;
+    // ALWAYS initialize a mask to prevent pipeline crashes
+    let mask = new Uint8Array(width * height); // Zero-filled (No mask)
+
     const anyResult = result as any;
+    // 1. Priority: Semantic Segmentation (if enabled/available)
     if (anyResult.segmentation && anyResult.segmentation.data) {
         const rawMask = anyResult.segmentation.data;
         // Upscale Mask if needed
         if (Math.abs(scaleFactor - 1.0) > 0.01) {
-            mask = new Uint8Array(width * height);
-
             // Nearest Neighbor Upscale
-            // We iterate destination (full size) and sample source
             const sW = detectionWidth;
-            // const sH = detectionHeight;
-
             for (let y = 0; y < height; y++) {
                 const sy = Math.floor(y * scaleFactor);
-                // Clamp
                 if (sy >= detectionHeight) continue;
-
                 const yOffset = y * width;
                 const syOffset = sy * sW;
-
                 for (let x = 0; x < width; x++) {
                     const sx = Math.floor(x * scaleFactor);
                     if (sx >= detectionWidth) continue;
-
                     const val = rawMask[syOffset + sx];
                     mask[yOffset + x] = (val > 100 || (val > 0.4 && val <= 1.0)) ? 1 : 0;
                 }
             }
         } else {
-            // No scaling, just threshold
+            // No scaling
             if (rawMask.length === width * height) {
-                const tempMask = new Uint8Array(width * height);
                 for (let i = 0; i < rawMask.length; i++) {
                     const val = rawMask[i];
-                    tempMask[i] = (val > 100 || (val > 0.4 && val <= 1.0)) ? 1 : 0;
+                    mask[i] = (val > 100 || (val > 0.4 && val <= 1.0)) ? 1 : 0;
                 }
-                mask = tempMask;
             }
-        }
-
-        // Apply Manual Hand Masking (Scaled)
-        if (mask && result.hand) {
-            result.hand.forEach(hand => {
-                if (hand.score > 0.3) {
-                    // Scale Hand Box back to Original Space
-                    const hx = hand.box[0] / scaleFactor;
-                    const hy = hand.box[1] / scaleFactor;
-                    const hw = hand.box[2] / scaleFactor;
-                    const hh = hand.box[3] / scaleFactor;
-
-                    const startX = Math.max(0, Math.floor(hx));
-                    const startY = Math.max(0, Math.floor(hy));
-                    const endX = Math.min(width, Math.ceil(hx + hw));
-                    const endY = Math.min(height, Math.ceil(hy + hh));
-
-                    for (let y = startY; y < endY; y++) {
-                        for (let x = startX; x < endX; x++) {
-                            mask![y * width + x] = 1;
-                        }
-                    }
-                }
-            });
-        }
-
-        if (mask) {
-            mask = hardenMask(mask, width, height);
         }
     }
+    // 2. Fallback: Geometry Masking (Draw Boxes/Ellipses)
+    else {
+        // A. Faces (Ellipses for smoother edges)
+        faces.forEach(face => {
+            const cx = face.x + face.width / 2;
+            const cy = face.y + face.height / 2;
+            const rx = (face.width / 2) * 0.9; // Slight shrink
+            const ry = (face.height / 2) * 1.1; // Slight vertical stretch for head shape
 
-    // FALLBACK: HEAD ESTIMATION for Missing Faces (Profiles/Back of heads)
-    // If a body exists but has no corresponding face detected, we infer the head position.
-    bodies.forEach(body => {
-        // Heuristic: Head is roughly the top 1/5th of the body box, centered horizontally.
-        // Or if 'nose' keypoint exists (not extracting keypoints here for perf, using box heuristic).
+            const startX = Math.max(0, Math.floor(face.x));
+            const startY = Math.max(0, Math.floor(face.y));
+            const endX = Math.min(width, Math.ceil(face.x + face.width));
+            const endY = Math.min(height, Math.ceil(face.y + face.height));
 
-        // Refined Heuristic:
-        // Head Width ~ 1/3 to 1/2 of Body Width (Shoulders)
-        // Head Height ~ 1/6 to 1/5 of Body Height
-
-        const headW = body.width * 0.4;
-        const headH = body.height * 0.18;
-        const headX = body.x + (body.width - headW) / 2;
-        const headY = body.y; // Top of body box
-
-        // Check if this "Estimated Head" is covered by an existing Real Face
-        let isCovered = false;
-        for (const face of faces) {
-            // Check Intersection
-            const ix = Math.max(face.x, headX);
-            const iy = Math.max(face.y, headY);
-            const iw = Math.min(face.x + face.width, headX + headW) - ix;
-            const ih = Math.min(face.y + face.height, headY + headH) - iy;
-
-            if (iw > 0 && ih > 0) {
-                // If overlap is significant (any overlap really, meaning we found A face there)
-                isCovered = true;
-                break;
+            for (let y = startY; y < endY; y++) {
+                for (let x = startX; x < endX; x++) {
+                    // Normalize to ellipse equation: (x-h)^2/rx^2 + (y-k)^2/ry^2 <= 1
+                    const dx = x - cx;
+                    const dy = y - cy;
+                    if (((dx * dx) / (rx * rx)) + ((dy * dy) / (ry * ry)) <= 1.0) {
+                        mask[y * width + x] = 1;
+                    }
+                }
             }
-        }
+        });
 
-        if (!isCovered) {
-            // NO FACE FOUND for this body. Inject Synthetic Face.
-            faces.push({
-                x: headX,
-                y: headY,
-                width: headW,
-                height: headH, // Extend down slightly?
-                score: body.score * 0.8, // Slightly lower confidence than real body
-                landmarks: {} // No landmarks for synthetic
-            });
-        }
-    });
+        // B. Bodies (Rectangles, maybe eroded later)
+        bodies.forEach(body => {
+            if (body.score < 0.2) return;
+            const startX = Math.max(0, Math.floor(body.x));
+            const startY = Math.max(0, Math.floor(body.y));
+            const endX = Math.min(width, Math.ceil(body.x + body.width));
+            const endY = Math.min(height, Math.ceil(body.y + body.height * 0.9)); // Cut off feet?
+
+            for (let y = startY; y < endY; y++) {
+                // Fill row (faster)
+                const offset = y * width;
+                mask.fill(1, offset + startX, offset + endX);
+            }
+        });
+
+        // C. Objects (Rectangles)
+        objects.forEach(obj => {
+            if (obj.score < 0.3) return;
+            // Filter labels? (e.g. 'tie', 'book' might not need detail?)
+            // For now, include everything detected as "Subject"
+            const startX = Math.max(0, Math.floor(obj.x));
+            const startY = Math.max(0, Math.floor(obj.y));
+            const endX = Math.min(width, Math.ceil(obj.x + obj.width));
+            const endY = Math.min(height, Math.ceil(obj.y + obj.height));
+
+            for (let y = startY; y < endY; y++) {
+                const offset = y * width;
+                mask.fill(1, offset + startX, offset + endX);
+            }
+        });
+    }
+
+    // Harden Mask (fill gaps)
+    if (mask) {
+        mask = hardenMask(mask, width, height);
+    }
 
     return {
-        faces: faces, // DO NOT merge bodies here. Bodies are handled by the mask.
-        mask
+        faces: faces,
+        mask // Guaranteed to be Uint8Array
     };
 }
 

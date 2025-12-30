@@ -31,7 +31,10 @@ export async function runTextDetection(preprocess: PreprocessResult): Promise<Te
     // 2. High-Res Mode Loop
     // Default Fast: 1500px (Better balance)
     // High Detail (>50): 2500px (Good for small text)
-    const MAX_TEXT_WIDTH = textDetail > 50 ? 2500 : 1500;
+    // 2. High-Res Mode Loop
+    // Default Fast: 1024px (Matches Face Detection)
+    // High Detail (>50): 2048px (Compromise)
+    const MAX_TEXT_WIDTH = textDetail > 50 ? 2048 : 1024;
 
     let detectionWidth = width;
     let detectionHeight = height;
@@ -57,8 +60,8 @@ export async function runTextDetection(preprocess: PreprocessResult): Promise<Te
     const pngBuffer = await pipeline.png().toBuffer();
 
     // WRAPPER: Timeout Protection
-    // If Tesseract takes > 15 seconds, we abort.
-    const TIMEOUT_MS = 15000;
+    // Reduce Timeout to 10s for snappy performance
+    const TIMEOUT_MS = 10000;
     let worker: Tesseract.Worker | null = null;
     let timeoutTimer: NodeJS.Timeout | null = null;
 
@@ -66,6 +69,9 @@ export async function runTextDetection(preprocess: PreprocessResult): Promise<Te
         console.log("[Text] Initializing Tesseract Worker...");
 
         const recognitionTask = (async () => {
+            // Use 'eng' but Tesseract.js usually downloads the standard best.
+            // We can't easily force "fast" without manual gzip download management in this env.
+            // But 1024px + 10s timeout is the "Light" equivalent logic.
             worker = await Tesseract.createWorker("eng", 1, {
                 errorHandler: (err) => console.error("[Text] Tesseract Error:", err)
             });
