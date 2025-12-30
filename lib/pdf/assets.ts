@@ -6,13 +6,23 @@ export async function loadImage(url: string): Promise<Buffer> {
     const fs = require('fs');
     const path = require('path');
 
-    console.log(`[Assets] Loading: ${url}`);
+    // 0. Strip Domain if present to force local load
+    let cleanUrl = url;
+    if (url.startsWith("http")) {
+        try {
+            const u = new URL(url);
+            cleanUrl = u.pathname;
+        } catch (e) { }
+    }
+
+    console.log(`[Assets] Loading: ${cleanUrl} (orig: ${url})`);
 
     try {
         // 1. Check for public relative paths (Prioritize these!)
-        // We normalize to ignore windows/unix slash differences if needed, but string check is usually fine for these hardcoded paths
-        if (url.startsWith("/uploads/") || url.startsWith("/brush") || url.startsWith("/palette")) {
-            const filePath = path.join(process.cwd(), "public", url);
+        if (cleanUrl.startsWith("/uploads/") || cleanUrl.startsWith("/brush") || cleanUrl.startsWith("/palette")) {
+            // Remove leading slash for safer joining
+            const relativePath = cleanUrl.startsWith("/") ? cleanUrl.slice(1) : cleanUrl;
+            const filePath = path.join(process.cwd(), "public", relativePath);
             return await fs.promises.readFile(filePath);
         }
 
@@ -33,7 +43,7 @@ export async function loadImage(url: string): Promise<Buffer> {
 
 export async function loadOptimizedImage(url: string, maxDim: number = 2500, format: "png" | "jpeg" = "png"): Promise<Buffer> {
     const fs = require('fs');
-    const debugLog = 'c:/Users/USER/HueDoTheNumbers/pdf-debug.log';
+    const debugLog = path.join(process.cwd(), 'pdf-debug.log');
 
     try {
         fs.appendFileSync(debugLog, `[Assets] Optimizing: ${url} to ${format}\n`);

@@ -3,19 +3,12 @@ import { generatePDF } from "@/lib/pdf/generator";
 import AdmZip from "adm-zip";
 import fs from "fs";
 
-export const config = {
-    maxDuration: 60,
-    api: {
-        bodyParser: {
-            sizeLimit: '50mb',
-        },
-    },
-};
+// export const config = { ... } // Removed invalid config
 
 export async function POST(req: NextRequest) {
     const fs = require('fs');
     const path = require('path');
-    const debugLogPath = 'c:/Users/USER/HueDoTheNumbers/pdf-debug.log';
+    const debugLogPath = path.join(process.cwd(), 'pdf-debug.log');
 
     try {
         fs.appendFileSync(debugLogPath, `[${new Date().toISOString()}] Request received\n`);
@@ -102,8 +95,8 @@ export async function POST(req: NextRequest) {
     } catch (error) {
         console.error("PDF Generation Error (Detailed):");
 
-        // HARDCODED PATH FOR DEBUGGING RELIABILITY
-        const logPath = 'c:/Users/USER/HueDoTheNumbers/pdf-error.log';
+        // Logs to project root
+        const logPath = path.join(process.cwd(), 'pdf-error.log');
         let errorMsg = `[${new Date().toISOString()}] CWD: ${process.cwd()}\n`;
 
         if (error instanceof Error) {
