@@ -10,11 +10,12 @@ interface GuideOptions {
     unit?: "ml" | "oz";
     opacity: number;
     labels: { x: number; y: number; index: number; fontSize?: number }[];
-    dimension: { width: number; height: number };
+    pixelDimension: { width: number; height: number };
+    physicalDimension: { width: number; height: number };
 }
 
 export async function generateGuidePDF(options: GuideOptions): Promise<jsPDF> {
-    const { originalUrl, posterizedUrl, outlineUrl, palette, unit = "ml", opacity, labels, dimension } = options;
+    const { originalUrl, posterizedUrl, outlineUrl, palette, unit = "ml", opacity, labels, pixelDimension, physicalDimension } = options;
 
     const docGuide = new jsPDF({
         unit: "mm",
@@ -24,8 +25,8 @@ export async function generateGuidePDF(options: GuideOptions): Promise<jsPDF> {
 
     // --- RECALCULATE VOLUMES DYNAMICALLY ---
     // User might have requested a different size than processed.
-    // We trust 'dimension' (Inches) and 'percentage' to be the truth.
-    const areaSqIn = dimension.width * dimension.height;
+    // We trust 'physicalDimension' (Inches) and 'percentage' to be the truth.
+    const areaSqIn = physicalDimension.width * physicalDimension.height;
     const areaCm2 = areaSqIn * 6.4516;
     const COVERAGE_CM2_PER_ML = 10; // Conservative
     const SAFETY_FACTOR = 2.5;
@@ -231,8 +232,9 @@ export async function generateGuidePDF(options: GuideOptions): Promise<jsPDF> {
         // --- DRAW LABELS ---
         const startX = (pW - drawW) / 2;
         const startY = 30;
-        const scaleX = drawW / dimension.width; // dimension is native pixel width (e.g. 800)
-        const scaleY = drawH / dimension.height;
+        // Scale labels from Image Pixels to PDF MM
+        const scaleX = drawW / pixelDimension.width;
+        const scaleY = drawH / pixelDimension.height;
 
         docGuide.setFont("helvetica", "bold");
         docGuide.setTextColor(100, 130, 160); // Slate Blue
@@ -427,7 +429,7 @@ export async function generateGuidePDF(options: GuideOptions): Promise<jsPDF> {
         docGuide.setFontSize(8);
         docGuide.setTextColor(100, 100, 100);
         docGuide.setFont("helvetica", "normal");
-        docGuide.text(`${dispVol}${displayUnit} required`, px + 19, py + 6.5);
+        docGuide.text(`${dispVol}${displayUnit} estimated`, px + 19, py + 6.5);
     });
 
     shopY += (Math.ceil(requiredPaints.length / paintCols) * paintRowH) + 20;
