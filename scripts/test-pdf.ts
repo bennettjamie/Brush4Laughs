@@ -19,7 +19,8 @@ async function test() {
             outlineUrl: "/uploads/0632e182-ce64-464c-a509-f8b6300fff0a.png", // Dummy
             opacity: 50,
             labels: [],
-            dimension: { width: 20, height: 24 }
+            pixelDimension: { width: 800, height: 1000 },
+            physicalDimension: { width: 20, height: 24 }
         });
 
         console.log("PDF Generated. Saving...");
