@@ -17,7 +17,9 @@ async function test() {
             ],
             unit: "ml",
             outlineUrl: "/uploads/0632e182-ce64-464c-a509-f8b6300fff0a.png", // Dummy
-            opacity: 50
+            opacity: 50,
+            labels: [],
+            dimension: { width: 20, height: 24 }
         });
 
         console.log("PDF Generated. Saving...");
