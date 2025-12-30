@@ -204,9 +204,9 @@ export default function CreatePage() {
                 const data = await res.json();
                 setCroppedImage(data.url);
                 setStep("options");
-            } catch (e) {
+            } catch (e: any) {
                 console.error(e);
-                alert("Failed to save crop");
+                alert(`Error saving crop: ${e.message}`);
             } finally {
                 setIsUploading(false);
             }
