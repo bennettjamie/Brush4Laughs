@@ -32,9 +32,8 @@ export async function runTextDetection(preprocess: PreprocessResult): Promise<Te
     // Default Fast: 1500px (Better balance)
     // High Detail (>50): 2500px (Good for small text)
     // 2. High-Res Mode Loop
-    // Default Fast: 1024px (Matches Face Detection)
-    // High Detail (>50): 2048px (Compromise)
-    const MAX_TEXT_WIDTH = textDetail > 50 ? 2048 : 1024;
+    // Bumped to 1500px to better catch small/artistic text
+    const MAX_TEXT_WIDTH = textDetail > 50 ? 2500 : 1500;
 
     let detectionWidth = width;
     let detectionHeight = height;
@@ -57,11 +56,18 @@ export async function runTextDetection(preprocess: PreprocessResult): Promise<Te
         pipeline = pipeline.resize(detectionWidth, detectionHeight);
     }
 
+    // ENHANCEMENT: Preprocess for OCR accuracy
+    // Grayscale + Normalization + Thresholding makes text pop against BG
+    pipeline = pipeline
+        .grayscale()
+        .normalize() // Stretch contrast
+        .sharpen();  // Crispen edges
+
     const pngBuffer = await pipeline.png().toBuffer();
 
     // WRAPPER: Timeout Protection
-    // Reduce Timeout to 10s for snappy performance
-    const TIMEOUT_MS = 10000;
+    // 12s for slightly larger image
+    const TIMEOUT_MS = 12000;
     let worker: Tesseract.Worker | null = null;
     let timeoutTimer: NodeJS.Timeout | null = null;
 
