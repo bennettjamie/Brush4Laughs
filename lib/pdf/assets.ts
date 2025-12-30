@@ -7,12 +7,14 @@ export async function loadImage(url: string): Promise<Buffer> {
     const path = require('path');
 
     // 0. Strip Domain if present to force local load
+    // 0. Clean URL (Strip Query Params & Domain)
     let cleanUrl = url;
-    if (url.startsWith("http")) {
-        try {
-            const u = new URL(url);
-            cleanUrl = u.pathname;
-        } catch (e) { }
+    try {
+        const u = new URL(url, "http://localhost"); // Base needed if relative
+        cleanUrl = u.pathname;
+    } catch (e) {
+        // fallback if standard string
+        cleanUrl = url.split("?")[0];
     }
 
     console.log(`[Assets] Loading: ${cleanUrl} (orig: ${url})`);
@@ -23,6 +25,13 @@ export async function loadImage(url: string): Promise<Buffer> {
             // Remove leading slash for safer joining
             const relativePath = cleanUrl.startsWith("/") ? cleanUrl.slice(1) : cleanUrl;
             const filePath = path.join(process.cwd(), "public", relativePath);
+            return await fs.promises.readFile(filePath);
+        }
+
+        // 1.5 Handle /api/images/ special route (maps to /public/uploads/)
+        if (cleanUrl.startsWith("/api/images/")) {
+            const filename = cleanUrl.replace("/api/images/", "");
+            const filePath = path.join(process.cwd(), "public", "uploads", filename);
             return await fs.promises.readFile(filePath);
         }
 
