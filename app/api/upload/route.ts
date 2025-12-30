@@ -18,8 +18,8 @@ export async function POST(req: NextRequest) {
         }
 
         // 20MB limit
-        if (file.size > 20 * 1024 * 1024) {
-            return NextResponse.json({ error: "File too large (max 20MB)" }, { status: 400 });
+        if (file.size > 50 * 1024 * 1024) {
+            return NextResponse.json({ error: "File too large (max 50MB)" }, { status: 400 });
         }
 
         const url = await saveImage(file);

@@ -36,8 +36,10 @@ export async function getCroppedImg(imageSrc: string, pixelCrop: Area): Promise<
     );
 
     return new Promise((resolve) => {
+        // Use JPEG with 95% quality to drastically reduce size compared to PNG
+        // while maintaining photo quality.
         canvas.toBlob((blob) => {
             resolve(blob!);
-        }, "image/png");
+        }, "image/jpeg", 0.95);
     });
 }

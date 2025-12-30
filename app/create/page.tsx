@@ -195,7 +195,8 @@ export default function CreatePage() {
             try {
                 setIsUploading(true);
                 const blob = await getCroppedImg(imageUrl, croppedAreaPixels);
-                const file = new File([blob], "cropped-selection.png", { type: "image/png" });
+                // Use JPEG extension and type to match the util's new output
+                const file = new File([blob], "cropped-selection.jpg", { type: "image/jpeg" });
                 const formData = new FormData();
                 formData.append("file", file);
                 const res = await fetch("/api/upload", { method: "POST", body: formData });

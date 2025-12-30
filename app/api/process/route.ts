@@ -3,7 +3,7 @@ import { getImagePath } from "@/lib/storage";
 import { processImage } from "@/lib/processing/pipeline";
 import { saveImage } from "@/lib/storage";
 
-export const maxDuration = 60; // Allow 60 seconds for high-res processing
+export const maxDuration = 300; // Allow 5 minutes for high-res processing
 
 
 export async function POST(req: NextRequest) {

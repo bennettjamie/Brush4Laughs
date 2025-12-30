@@ -72,6 +72,9 @@ export function LoadingScreen({ loadingStep, loadingProgress, colors, printSizeN
     const [messageIndex, setMessageIndex] = useState(0);
 
     useEffect(() => {
+        // Scroll to top when loading starts (for mobile)
+        window.scrollTo({ top: 0, behavior: "smooth" });
+
         if (isLastStep) {
             const interval = setInterval(() => {
                 setMessageIndex(prev => {
