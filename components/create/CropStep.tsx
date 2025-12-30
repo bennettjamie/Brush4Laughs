@@ -195,19 +195,22 @@ export function CropStep({
 
                     {(() => {
                         if (!localPixels) return null;
-                        // Calculate DPI
                         const wInches = printSize.name === "Custom" ? (sizeUnit === "cm" ? customDim.width / 2.54 : customDim.width) : printSize.width;
                         const hInches = printSize.name === "Custom" ? (sizeUnit === "cm" ? customDim.height / 2.54 : customDim.height) : printSize.height;
 
-                        // Use the larger dimension to check "minimum quality" for the print
                         const dpiW = localPixels.width / wInches;
                         const dpiH = localPixels.height / hInches;
                         const minDpi = Math.min(dpiW, dpiH);
 
                         if (minDpi < 100) {
                             return (
-                                <div className="bg-rose-500/90 text-white text-xs font-bold px-4 py-2 rounded-xl shadow-lg backdrop-blur-md self-start border border-rose-400/50 animate-in fade-in slide-in-from-top-2">
-                                    🛑 Low Resolution ({Math.round(minDpi)} DPI). Print may look blurry.
+                                <div className="flex flex-col gap-2 items-start">
+                                    <div className="bg-rose-500/90 text-white text-xs font-bold px-4 py-2 rounded-xl shadow-lg backdrop-blur-md border border-rose-400/50 animate-in fade-in slide-in-from-top-2">
+                                        🛑 Low Resolution ({Math.round(minDpi)} DPI). Print may look blurry.
+                                    </div>
+                                    <div className="bg-slate-800/80 text-slate-300 text-[10px] font-mono px-3 py-1 rounded-lg backdrop-blur-md">
+                                        Input: {localPixels.width}x{localPixels.height}px | Target: {wInches}"x{hInches}"
+                                    </div>
                                 </div>
                             );
                         }
