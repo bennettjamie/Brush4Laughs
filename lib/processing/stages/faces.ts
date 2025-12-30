@@ -251,7 +251,7 @@ export async function runFaceDetection(preprocess: PreprocessResult): Promise<{
 
     // Harden Mask (fill gaps)
     if (mask) {
-        mask = hardenMask(mask, width, height);
+        mask = hardenMask(mask as any, width, height);
     }
 
     return {
