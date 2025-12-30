@@ -300,11 +300,7 @@ export async function runFaceDetection(preprocess: PreprocessResult): Promise<{
 }
 
 
-return {
-    faces: faces,
-    mask // Guaranteed to be Uint8Array
-};
-}
+
 
 // Helper: Morphological Closing (Dilate -> Erode)
 // Fills small gaps (radius 2 approx 5px) to connect limbs
