@@ -159,7 +159,8 @@ export async function runFaceDetection(preprocess: PreprocessResult): Promise<{
 
     // Extract Mask
     // ALWAYS initialize a mask to prevent pipeline crashes
-    let mask = new Uint8Array(width * height); // Zero-filled (No mask)
+    // Use 'any' to bypass strict ArrayBuffer vs SharedArrayBuffer conflicts in TS
+    let mask: any = new Uint8Array(width * height); // Zero-filled (No mask)
 
     const anyResult = result as any;
     // 1. Priority: Semantic Segmentation (if enabled/available)
