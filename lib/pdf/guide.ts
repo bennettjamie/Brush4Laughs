@@ -9,16 +9,33 @@ interface GuideOptions {
     palette: { color: string; name: string; amount: number; percentage: number }[];
     unit?: "ml" | "oz";
     opacity: number;
+    labels: { x: number; y: number; index: number; fontSize?: number }[];
+    dimension: { width: number; height: number };
 }
 
 export async function generateGuidePDF(options: GuideOptions): Promise<jsPDF> {
-    const { originalUrl, posterizedUrl, outlineUrl, palette, unit = "ml", opacity } = options;
+    const { originalUrl, posterizedUrl, outlineUrl, palette, unit = "ml", opacity, labels, dimension } = options;
 
     const docGuide = new jsPDF({
         unit: "mm",
         format: "letter",
         orientation: "portrait"
     });
+
+    // --- RECALCULATE VOLUMES DYNAMICALLY ---
+    // User might have requested a different size than processed.
+    // We trust 'dimension' (Inches) and 'percentage' to be the truth.
+    const areaSqIn = dimension.width * dimension.height;
+    const areaCm2 = areaSqIn * 6.4516;
+    const COVERAGE_CM2_PER_ML = 10; // Conservative
+    const SAFETY_FACTOR = 2.5;
+
+    palette.forEach(p => {
+        const itemAreaCm2 = areaCm2 * (p.percentage / 100);
+        let estimatedMl = (itemAreaCm2 / COVERAGE_CM2_PER_ML) * SAFETY_FACTOR;
+        p.amount = Math.max(0.5, estimatedMl);
+    });
+    // ---------------------------------------
 
     const logo = await loadImage("/brush_only.png");
 
@@ -210,6 +227,27 @@ export async function generateGuidePDF(options: GuideOptions): Promise<jsPDF> {
 
         // Draw Lines on top
         docGuide.addImage(outlineImg, "PNG", (pW - drawW) / 2, 30, drawW, drawH);
+
+        // --- DRAW LABELS ---
+        const startX = (pW - drawW) / 2;
+        const startY = 30;
+        const scaleX = drawW / dimension.width; // dimension is native pixel width (e.g. 800)
+        const scaleY = drawH / dimension.height;
+
+        docGuide.setFont("helvetica", "bold");
+        docGuide.setTextColor(100, 130, 160); // Slate Blue
+
+        // Filter labels slightly if they are too small? No, user wants them.
+        labels.forEach(label => {
+            const lx = startX + (label.x * scaleX);
+            const ly = startY + (label.y * scaleY);
+            // Limit font size range
+            const ptSize = Math.max(4, Math.min(12, (label.fontSize || 0.5) * 10)); // Slightly smaller scale than canvas
+
+            docGuide.setFontSize(ptSize);
+            docGuide.text(`${label.index}`, lx, ly, { align: "center", baseline: "middle" });
+        });
+
     } catch (e) { console.warn(e); }
 
 
@@ -299,24 +337,24 @@ export async function generateGuidePDF(options: GuideOptions): Promise<jsPDF> {
         const tx = x + swatchSize + 3;
         const maxTextW = colWidth - swatchSize - 3;
 
-        // ID & Name
+        // ID & Name (Top Line)
         docGuide.setFontSize(nameSize);
         docGuide.setFont("helvetica", "bold");
         docGuide.setTextColor(20, 20, 20);
-        docGuide.text(`${i + 1}. ${item.name}`, tx, centerY - 1, { maxWidth: maxTextW });
+        docGuide.text(`${i + 1}. ${item.name}`, tx, centerY - (rowH * 0.15), { maxWidth: maxTextW });
 
-        // Recipe
+        // Recipe (Bottom Line)
         const recipe = getAcrylicRecipe(item.color);
         docGuide.setFontSize(recipeSize);
         docGuide.setFont("helvetica", "normal");
         docGuide.setTextColor(80, 80, 80);
-        // Clean up recipe string for tight space
+        // Clean up recipe
         const cleanRecipe = recipe
             .replace("Use standard", "Standard")
             .replace("Mix", "Mix:")
             .replace(/\[/g, "")
             .replace(/\]/g, "");
-        docGuide.text(cleanRecipe, tx, centerY + 2 + recipeSize, { maxWidth: maxTextW, lineHeightFactor: 1.2 });
+        docGuide.text(cleanRecipe, tx, centerY + (rowH * 0.25) + 1, { maxWidth: maxTextW, lineHeightFactor: 1.1 });
     });
 
     // PAGE 6: Shopping List
@@ -375,16 +413,21 @@ export async function generateGuidePDF(options: GuideOptions): Promise<jsPDF> {
         docGuide.setDrawColor(200, 200, 200);
         docGuide.circle(px + 12, py + 2.5, 3, "FD");
 
-        // Name + Volume
-        const vol = Math.ceil(inventory[paint]); // Round up to nearest ml
-        const displayUnit = unit === "ml" ? "ml" : "oz";
-        // Note: Logic assumes input 'amount' is in ML. Converting to OZ if needed:
-        const dispVol = unit === "ml" ? vol : Math.ceil(vol * 0.0338);
-
+        // Name
         docGuide.setFontSize(10);
         docGuide.setTextColor(40, 40, 40);
         docGuide.setFont("helvetica", "bold");
-        docGuide.text(`${paint} (${dispVol}${displayUnit})`, px + 19, py + 3.5);
+        docGuide.text(`${paint}`, px + 19, py + 2.5);
+
+        // Volume (New Line)
+        const vol = Math.ceil(inventory[paint]); // Round up to nearest ml
+        const displayUnit = unit === "ml" ? "ml" : "oz";
+        const dispVol = unit === "ml" ? vol : Math.ceil(vol * 0.0338 * 10) / 10; // 1 decimal for oz
+
+        docGuide.setFontSize(8);
+        docGuide.setTextColor(100, 100, 100);
+        docGuide.setFont("helvetica", "normal");
+        docGuide.text(`${dispVol}${displayUnit} required`, px + 19, py + 6.5);
     });
 
     shopY += (Math.ceil(requiredPaints.length / paintCols) * paintRowH) + 20;
@@ -425,6 +468,11 @@ export async function generateGuidePDF(options: GuideOptions): Promise<jsPDF> {
     docGuide.setTextColor(100, 100, 100);
     docGuide.setFont("helvetica", "italic");
     docGuide.text("Note: Standard 'Student Grade' acrylics (Liquitex Basics, Golden) are perfect for this project.", shopW / 2, shopY, { align: "center" });
+
+    // Extra Note
+    shopY += 5;
+    docGuide.setTextColor(244, 63, 94); // Rose 500
+    docGuide.text("Tip: These volume estimates are just that—estimates. Buy 20-30% extra to be safe!", shopW / 2, shopY, { align: "center" });
 
 
     return docGuide;

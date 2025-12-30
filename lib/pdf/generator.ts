@@ -45,7 +45,9 @@ export async function generatePDF(
                 outlineUrl,
                 palette,
                 unit: "ml",
-                opacity
+                opacity,
+                labels: labels as any, // Type assertion if needed, though interface matches
+                dimension: customDim || { width: 20, height: 24 } // Pass PHYSICAL dimensions (Inches)
             });
             const guideBuffer = Buffer.from(guideDoc.output("arraybuffer"));
 

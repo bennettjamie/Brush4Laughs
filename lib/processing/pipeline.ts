@@ -232,9 +232,10 @@ export async function processImage(
         // Calculate Physical Volume
         const areaMm2 = count / (pixelsPerMm * pixelsPerMm);
         const areaCm2 = areaMm2 / 100;
-        const COVERAGE_CM2_PER_ML = 15;
-        // Safety Factor 1.25 (+25% buffer) as requested
-        let estimatedMl = (areaCm2 / COVERAGE_CM2_PER_ML) * 1.25;
+        // Conservative coverage (thick application)
+        const COVERAGE_CM2_PER_ML = 10;
+        // Safety Factor 2.5 (+150% buffer) to ensure they have enough paint
+        let estimatedMl = (areaCm2 / COVERAGE_CM2_PER_ML) * 2.5;
         estimatedMl = Math.max(0.5, estimatedMl);
 
         return {
