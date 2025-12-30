@@ -93,18 +93,59 @@ export function runQuantize(
 
     console.log(`[Quantize] Sampling Steps (Dynamic): Face=${STEP_DETAIL}, Body=${STEP_BODY}, BG=${STEP_BG}`);
 
+    // --- DYNAMIC SAMPLING LOOP ---
+    // Instead of hard categories, we use the Gradient Mask from faces.ts to determine step size.
+    // Mask Value (0-255) -> Detail Level (25-100) -> Step Size.
+
+    // 1. Define Base Detail (User Request: 25% for Background)
+    const MIN_DETAIL = 25;
+
+    // We pre-calculate step sizes for optimization
+    const getStepForMaskVal = (val: number) => {
+        // Map 0-255 to MIN_DETAIL-100
+        const detail = MIN_DETAIL + (val / 255.0) * (100 - MIN_DETAIL);
+
+        // Map Detail to Step logic (Inverse of mapStep)
+        // mapStep logic: (detail, minStep, maxStep)
+        // We use a global range: High Detail=Step 1, Low Detail=Step 60
+        // But we want it scaled by resolution.
+
+        // Base Ranges based on resolution
+        const MAX_STEP = Math.floor(resolutionScalar * 1.5); // Low detail step
+        const MIN_STEP = 1; // High detail step (Face)
+
+        const t = detail / 100; // 0.25 to 1.0
+
+        // Interpolate
+        return Math.max(1, Math.round(MAX_STEP - t * (MAX_STEP - MIN_STEP)));
+    };
+
+    // Pre-compute lookup table for 0-255 to save Math.round calls
+    const stepLookup = new Int32Array(256);
+    for (let i = 0; i < 256; i++) {
+        stepLookup[i] = getStepForMaskVal(i);
+    }
+
+    // Stats
+    console.log(`[Quantize] Dynamic Steps: 0(BG)=${stepLookup[0]}, 160(Body)=${stepLookup[160]}, 255(Face)=${stepLookup[255]}`);
+
+    const mask = preprocess.mask; // Gradient Mask
+
     for (let i = 0; i < data.length; i += 4) {
         if (data[i + 3] < 128) continue; // Skip transparent
 
         const pixelIdx = i / 4;
+
+        // Determine Step Size for this pixel
+        let step = stepLookup[0]; // Default BG
+        if (mask && mask[pixelIdx]) {
+            step = stepLookup[mask[pixelIdx]];
+        }
+
+        // TEXT OVERRIDE: Text is always ultra-high detail
+        let isText = false;
         const x = pixelIdx % width;
         const y = Math.floor(pixelIdx / width);
-
-        // Classification
-        const isSubjectPixel = isSubject(i); // Uses Mask/Faces/Center logic
-
-        // Text Check (Priority Overrides)
-        let isText = false;
         if (preprocess.text) {
             for (const b of preprocess.text) {
                 if (x >= b.x && x <= b.x + b.width && y >= b.y && y <= b.y + b.height) {
@@ -113,28 +154,27 @@ export function runQuantize(
                 }
             }
         }
+        if (isText) step = 1;
 
-        if (isText) {
-            // TEXT PIXEL (Treat as High Priority Face-like)
-            if (pixelIdx % STEP_DETAIL === 0) {
-                facePixels.push([data[i], data[i + 1], data[i + 2]]);
-            }
-        } else if (isSubjectPixel) {
-            if (isInFaceOval(x, y)) {
-                // FACE PIXEL
-                if (pixelIdx % STEP_DETAIL === 0) {
-                    facePixels.push([data[i], data[i + 1], data[i + 2]]);
-                }
+        // Sampling Decision
+        // To avoid grid artifacts from variable steps, we can use a randomized offset or just modulo.
+        // Modulo is fine if density is high enough.
+
+        if (pixelIdx % step === 0) {
+            // Classify into buckets for k-means initialization
+            // Roughly: 
+            // Mask > 200 -> Face List
+            // Mask > 50 -> Body List
+            // Else -> BG List
+
+            const rgb = [data[i], data[i + 1], data[i + 2]];
+
+            if (isText || (mask && mask[pixelIdx] > 200)) {
+                facePixels.push(rgb);
+            } else if (mask && mask[pixelIdx] > 50) {
+                bodyPixels.push(rgb);
             } else {
-                // BODY PIXEL
-                if (pixelIdx % STEP_BODY === 0) {
-                    bodyPixels.push([data[i], data[i + 1], data[i + 2]]);
-                }
-            }
-        } else {
-            // BACKGROUND PIXEL
-            if (pixelIdx % STEP_BG === 0) {
-                bgPixels.push([data[i], data[i + 1], data[i + 2]]);
+                bgPixels.push(rgb);
             }
         }
     }

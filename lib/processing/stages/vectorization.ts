@@ -77,57 +77,38 @@ export function runVectorization(
                 const c2 = centroids[neighborIdx];
                 const dist = ColorDist(c1, c2);
 
-                // --- ADAPTIVE THRESHOLDING ---
-                // Quality of outline depends on LOCATION.
-                let threshold = EDGE_BLEND_THRESHOLD;
-                let forceSolid = false;
-
-                // Check Face/Subject Region
-                let inSubject = false;
-                if (preprocess.faces) {
-                    const cx = x;
-                    const cy = y;
-                    for (const f of preprocess.faces) {
-                        // Expand slightly
-                        const pad = Math.min(f.width, f.height) * 0.1;
-                        if (cx >= f.x - pad && cx <= f.x + f.width + pad && cy >= f.y - pad && cy <= f.y + f.height + pad) {
-                            inSubject = true;
-                            break;
-                        }
-                    }
-                }
-
-                // Also Center safely
-                const cx = width / 2; const cy = height / 2;
-                if ((x - cx) ** 2 + (y - cy) ** 2 < (Math.min(width, height) * 0.25) ** 2) {
-                    inSubject = true;
-                }
-
-                if (inSubject) {
-                    threshold = 5; // HYPER SENSITIVE for faces/bodies
-                    forceSolid = true;
-                }
+                // --- UNIFORM THRESHOLDING ---
+                // Fixed threshold for consistent line weights across the entire canvas.
+                const threshold = 15; // Standard sensitivity
+                const forceSolid = false; // Do not force solid based on region
 
                 // Decision
                 const isSignificant = dist > threshold;
                 const isHuman = isHumanTone(c1) || isHumanTone(c2);
 
-                if (isSignificant || (inSubject && dist > 3)) {
+                if (isSignificant) {
                     // Draw Line
-                    if (isHuman || forceSolid || dist > 40) {
-                        // SOLID
+                    // Human tones get solid lines for clarity, others get dotted if subtle?
+                    // User wants "same color region outline line weights".
+                    // Solid lines are most consistent.
+                    // But dotted lines are good for background blending.
+                    // Let's use a simple rule: High contrast = Solid, Low contrast = Dotted.
+
+                    if (isHuman || dist > 40) {
+                        // SOLID (High contrast or Human)
                         outlineData[offset] = 45;
                         outlineData[offset + 1] = 45;
                         outlineData[offset + 2] = 45;
                         outlineData[offset + 3] = 255;
                     } else {
-                        // DOTTED (Background blending)
+                        // DOTTED (Subtle edges)
                         if ((x + y) % 6 < 3) {
                             outlineData[offset] = 100;
                             outlineData[offset + 1] = 100;
                             outlineData[offset + 2] = 100;
                             outlineData[offset + 3] = 255;
                         } else {
+                            // Gap
                             outlineData[offset + 3] = 0;
                         }
                     }

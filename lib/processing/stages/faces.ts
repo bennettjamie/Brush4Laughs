@@ -192,14 +192,70 @@ export async function runFaceDetection(preprocess: PreprocessResult): Promise<{
             }
         }
     }
-    // 2. Fallback: Geometry Masking (Draw Boxes/Ellipses)
+    // 2. Fallback: Geometry Masking (Draw Soft Gradients)
     else {
-        // A. Faces (Ellipses for smoother edges)
+        // Helper: Draw Soft Rectangle (Body/Object)
+        // Peak value at center, fading out to edges.
+        const addSoftBox = (box: { x: number, y: number, width: number, height: number }, peakVal: number) => {
+            const startX = Math.max(0, Math.floor(box.x));
+            const startY = Math.max(0, Math.floor(box.y));
+            const endX = Math.min(width, Math.ceil(box.x + box.width));
+            const endY = Math.min(height, Math.ceil(box.y + box.height));
+
+            const cx = box.x + box.width / 2;
+            const cy = box.y + box.height / 2;
+            const rx = box.width / 2;
+            const ry = box.height / 2;
+
+            for (let y = startY; y < endY; y++) {
+                for (let x = startX; x < endX; x++) {
+                    // Normalized distance from center (0 to 1)
+                    // We want a "rounded rectangle" feel, or just simple radial falloff from center?
+                    // Simple radial is strictly oval. We want Box shape.
+                    // Let's use max(dx, dy) for box falloff.
+                    const dx = Math.abs(x - cx) / rx;
+                    const dy = Math.abs(y - cy) / ry;
+
+                    // Box distance: max(dx, dy).
+                    // This creates a pyramid.
+                    // Let's add smoothstep curve: 1 - smooth(d).
+                    const d = Math.max(dx, dy);
+
+                    if (d < 1.0) {
+                        // Soft edge: fade starts at 0.5 (50% center is solid)
+                        // If d < 0.5, val = peak.
+                        // If d > 0.5, val fades to 0.
+                        let factor = 1.0;
+                        if (d > 0.6) {
+                            factor = 1.0 - ((d - 0.6) / 0.4); // Linear fade at edge
+                        }
+
+                        const val = Math.floor(peakVal * factor);
+                        const idx = y * width + x;
+                        if (val > mask[idx]) mask[idx] = val;
+                    }
+                }
+            }
+        };
+
+        // B. Bodies (Medium Detail) - 160
+        bodies.forEach(body => {
+            if (body.score < 0.2) return;
+            addSoftBox(body, 160);
+        });
+
+        // C. Objects (Medium-Low Detail) - 120
+        objects.forEach(obj => {
+            if (obj.score < 0.3) return;
+            addSoftBox(obj, 120);
+        });
+
+        // A. Faces (High Detail) - 255 (Highest Priority, draws over bodies)
         faces.forEach(face => {
             const cx = face.x + face.width / 2;
             const cy = face.y + face.height / 2;
-            const rx = (face.width / 2) * 0.9; // Slight shrink
-            const ry = (face.height / 2) * 1.1; // Slight vertical stretch for head shape
+            const rx = (face.width / 2);
+            const ry = (face.height / 2);
 
             const startX = Math.max(0, Math.floor(face.x));
             const startY = Math.max(0, Math.floor(face.y));
@@ -208,57 +264,46 @@ export async function runFaceDetection(preprocess: PreprocessResult): Promise<{
 
             for (let y = startY; y < endY; y++) {
                 for (let x = startX; x < endX; x++) {
-                    // Normalize to ellipse equation: (x-h)^2/rx^2 + (y-k)^2/ry^2 <= 1
-                    const dx = x - cx;
-                    const dy = y - cy;
-                    if (((dx * dx) / (rx * rx)) + ((dy * dy) / (ry * ry)) <= 1.0) {
-                        mask[y * width + x] = 1;
+                    // Ellipse Distance
+                    const dx = (x - cx) / rx;
+                    const dy = (y - cy) / ry;
+                    const dSq = dx * dx + dy * dy;
+
+                    if (dSq <= 1.0) {
+                        // Gaussian-ish falloff
+                        // Center = 255. Edge = ~50?
+                        // Let's keep it high for the face, only fade at very edge.
+                        const d = Math.sqrt(dSq);
+                        let factor = 1.0;
+                        if (d > 0.7) {
+                            factor = 1.0 - ((d - 0.7) / 0.3);
+                        }
+
+                        const val = Math.floor(255 * factor);
+                        const idx = y * width + x;
+                        if (val > mask[idx]) mask[idx] = val;
                     }
                 }
             }
         });
-
-        // B. Bodies (Rectangles, maybe eroded later)
-        bodies.forEach(body => {
-            if (body.score < 0.2) return;
-            const startX = Math.max(0, Math.floor(body.x));
-            const startY = Math.max(0, Math.floor(body.y));
-            const endX = Math.min(width, Math.ceil(body.x + body.width));
-            const endY = Math.min(height, Math.ceil(body.y + body.height * 0.9)); // Cut off feet?
-
-            for (let y = startY; y < endY; y++) {
-                // Fill row (faster)
-                const offset = y * width;
-                mask.fill(1, offset + startX, offset + endX);
-            }
-        });
-
-        // C. Objects (Rectangles)
-        objects.forEach(obj => {
-            if (obj.score < 0.3) return;
-            // Filter labels? (e.g. 'tie', 'book' might not need detail?)
-            // For now, include everything detected as "Subject"
-            const startX = Math.max(0, Math.floor(obj.x));
-            const startY = Math.max(0, Math.floor(obj.y));
-            const endX = Math.min(width, Math.ceil(obj.x + obj.width));
-            const endY = Math.min(height, Math.ceil(obj.y + obj.height));
-
-            for (let y = startY; y < endY; y++) {
-                const offset = y * width;
-                mask.fill(1, offset + startX, offset + endX);
-            }
-        });
     }
 
-    // Harden Mask (fill gaps)
-    if (mask) {
-        mask = hardenMask(mask as any, width, height);
-    }
+    // Harden Mask is removed/unnecessary for Gradients, 
+    // or we could use it as a "Blur" to smooth the jagged pixel logic.
+    // But our math above is already smoothish.
+    // Let's skip hardenMask.
 
     return {
         faces: faces,
-        mask // Guaranteed to be Uint8Array
+        mask // Guaranteed to be Uint8Array (casted any)
     };
+}
+
+
+return {
+    faces: faces,
+    mask // Guaranteed to be Uint8Array
+};
 }
 
 // Helper: Morphological Closing (Dilate -> Erode)
