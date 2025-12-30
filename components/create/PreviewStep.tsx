@@ -66,12 +66,12 @@ export function PreviewStep({
                     >
                         {/* Bottom Layer: Color Image (Faded) */}
                         <div style={{ opacity: opacity / 100 }} className="absolute inset-0 z-0 transition-opacity duration-300">
-                            <Image src={resultImage} alt="Color Guide" fill className="object-contain" priority />
+                            <img src={resultImage} alt="Color Guide" className="object-contain w-full h-full" />
                         </div>
                         {/* Top Layer: Outline (Always visible) */}
                         {outlineImage && (
                             <div className="absolute inset-0 z-10 mix-blend-multiply opacity-90 pointer-events-none">
-                                <Image src={outlineImage} alt="Outline" fill className="object-contain" />
+                                <img src={outlineImage} alt="Outline" className="object-contain w-full h-full" />
                             </div>
                         )}
                     </div>
@@ -83,7 +83,7 @@ export function PreviewStep({
                         className="relative w-full bg-slate-50 dark:bg-slate-900 rounded-3xl overflow-hidden border border-slate-200 dark:border-white/10 shadow-2xl ring-1 ring-slate-200 dark:ring-white/5"
                         style={{ aspectRatio: croppedAreaPixels ? croppedAreaPixels.width / croppedAreaPixels.height : 1 }}
                     >
-                        <Image src={resultImage} alt="Reference" fill className="object-contain" />
+                        <img src={resultImage} alt="Reference" className="object-contain w-full h-full" />
                     </div>
                 </div>
             </div>
