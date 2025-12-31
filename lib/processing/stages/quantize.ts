@@ -112,7 +112,11 @@ export function runQuantize(
 
         // Base Ranges based on resolution
         const MAX_STEP = Math.floor(resolutionScalar * 1.5); // Low detail step
-        const MIN_STEP = 1; // High detail step (Face)
+
+        // SAFETY FIX: Prevent MIN_STEP from being 1 on huge images
+        // If resolutionScalar is 240 (12MP), MIN_STEP becomes 48.
+        // This keeps total samples roughly constant (~200k) regardless of resolution.
+        const MIN_STEP = Math.max(1, Math.floor(resolutionScalar * 0.2));
 
         const t = detail / 100; // 0.25 to 1.0
 
