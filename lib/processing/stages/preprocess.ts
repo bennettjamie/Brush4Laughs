@@ -8,10 +8,11 @@ export async function runPreprocess(options: ProcessingOptions): Promise<Preproc
     // const metadata = await pipeline.metadata(); // Not strictly needed if we resize directly
 
     // 1a. Dynamic Resolution Scaling (Target 300 PPI for hairline precision)
-    const targetPPI = 300;
     const targetInches = customDim?.width || 20;
-    // Cap at 4000px to maintain server stability while allowing fine details
-    const workingWidth = Math.min(4000, Math.max(3000, Math.round(targetInches * targetPPI)));
+
+    // Cap at 2500px to ensure mobile/VPS stability (approx 6MP)
+    // 3000-4000px was causing OOM in vectorization/labeling stages
+    const workingWidth = Math.min(2500, Math.round(targetInches * 150));
 
     let processedPipe = pipeline
         .resize({ width: workingWidth, fit: 'inside' })
