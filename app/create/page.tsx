@@ -215,9 +215,38 @@ export default function CreatePage() {
         }
     };
 
+    const [wantsNotification, setWantsNotification] = useState(false);
+
+    // --- Notification Logic ---
+    useEffect(() => {
+        if (wantsNotification && "Notification" in window) {
+            if (Notification.permission === "default") {
+                Notification.requestPermission();
+            }
+        }
+    }, [wantsNotification]);
+
+    // Play Chime/Notify on Completion
+    useEffect(() => {
+        if (!isProcessing && resultImage && step === "preview") {
+            // Processing Just Finished
+            if (wantsNotification) {
+                import("@/lib/audio").then(mod => mod.playSuccessChime());
+
+                if ("Notification" in window && Notification.permission === "granted") {
+                    new Notification("Brush4Laughs Studio", {
+                        body: "Your masterpiece is ready!",
+                        icon: "/brush_only.png"
+                    });
+                }
+            }
+        }
+    }, [isProcessing, resultImage, step, wantsNotification]);
+
     const generatePreview = async () => {
         if (!croppedImage) return;
         setIsProcessing(true);
+        setWantsNotification(false); // Reset for new run
         setStep("preview");
         const targetW = printSize.name === "Custom" ? customDim.width : printSize.width;
         const targetH = printSize.name === "Custom" ? customDim.height : printSize.height;
@@ -540,6 +569,8 @@ export default function CreatePage() {
                                     loadingProgress={loadingProgress}
                                     colors={colors}
                                     printSizeName={printSize.name}
+                                    notificationActive={wantsNotification}
+                                    onToggleNotification={() => setWantsNotification(prev => !prev)}
                                 />
                             ) : (
                                 <PreviewStep

@@ -8,6 +8,8 @@ type LoadingScreenProps = {
     loadingProgress: number;
     colors: number;
     printSizeName: string;
+    onToggleNotification?: () => void;
+    notificationActive?: boolean;
 };
 
 const REASSURANCE_MESSAGES = [
@@ -27,7 +29,7 @@ const REASSURANCE_MESSAGES = [
     "Still working our magic...",
 ];
 
-export function LoadingScreen({ loadingStep, loadingProgress, colors, printSizeName }: LoadingScreenProps) {
+export function LoadingScreen({ loadingStep, loadingProgress, colors, printSizeName, onToggleNotification, notificationActive }: LoadingScreenProps) {
     const activeStep = LOADING_STEPS[loadingStep] || LOADING_STEPS[0];
     const isLastStep = loadingStep === LOADING_STEPS.length - 1;
     const [messageIndex, setMessageIndex] = useState(0);
@@ -110,6 +112,27 @@ export function LoadingScreen({ loadingStep, loadingProgress, colors, printSizeN
                 <p className="text-slate-500 text-xs md:text-sm font-medium max-w-xs md:max-w-md italic leading-relaxed">
                     Orchestrating a {colors}-color masterpiece for your {printSizeName} canvas.
                 </p>
+
+                {/* Notification Toggle */}
+                {onToggleNotification && (
+                    <button
+                        onClick={onToggleNotification}
+                        className={`mt-6 flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold uppercase tracking-widest transition-all duration-300 ${notificationActive
+                            ? "bg-green-500/20 text-green-500 border border-green-500/50"
+                            : "bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 border border-indigo-500/20"
+                            }`}
+                    >
+                        {notificationActive ? (
+                            <>
+                                <span className="text-lg">✓</span> We'll remind you!
+                            </>
+                        ) : (
+                            <>
+                                <span className="text-lg">🔔</span> Remind me when done?
+                            </>
+                        )}
+                    </button>
+                )}
             </div>
         </motion.div>
     );
