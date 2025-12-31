@@ -19,7 +19,7 @@ export async function getCroppedImg(imageSrc: string, pixelCrop: Area): Promise<
     // --- Smart Resize Logic ---
     // If the crop is huge (e.g. 4000px from a phone), we resize it down to MAX_DIM
     // This dramatically reduces upload size while keeping enough quality for Paint-by-Numbers.
-    const MAX_DIM = 4096;
+    const MAX_DIM = 2500; // Aligned with Server Cap (6MP is plenty)
     let width = pixelCrop.width;
     let height = pixelCrop.height;
 

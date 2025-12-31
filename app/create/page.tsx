@@ -276,7 +276,7 @@ export default function CreatePage() {
             setDimensions(data.dimensions || { width: 800, height: 800 });
         } catch (err) {
             console.error(err);
-            alert("Processing failed");
+            alert("Processing failed. This image might be too complex for mobile processing. Please try on a computer for best results.");
             setStep("options");
         } finally {
             setIsProcessing(false);
