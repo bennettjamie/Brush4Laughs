@@ -44,9 +44,9 @@ export async function runFaceDetection(preprocess: PreprocessResult): Promise<{
                 enabled: true,
                 detector: {
                     rotation: false,
-                    maxDetected: 20, // Increase max faces
-                    minConfidence: 0.05, // Extremely aggressive to catch all faces
-                    iouThreshold: 0.3, // Less strict overlap
+                    maxDetected: 40, // Set to 40 per user request
+                    minConfidence: 0.1, // Slightly higher to avoid false positives at high res
+                    iouThreshold: 0.5, // Allow more overlap (50%) for crowded shots
                 },
                 mesh: { enabled: true },
                 iris: { enabled: true },
@@ -75,7 +75,7 @@ export async function runFaceDetection(preprocess: PreprocessResult): Promise<{
     const { data, width, height } = preprocess;
 
     // --- OPTIMIZATION: Downscale for Detection if huge ---
-    const MAX_DETECTION_WIDTH = 1024; // Reduced from 1500 for VPS CPU safety
+    const MAX_DETECTION_WIDTH = 2048; // Increased for Group Photos (Faces < 50px need this)
     let detectionWidth = width;
     let detectionHeight = height;
     let detectionData = data;
